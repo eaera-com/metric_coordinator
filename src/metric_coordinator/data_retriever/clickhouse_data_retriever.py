@@ -3,32 +3,30 @@ from pydantic.alias_generators import to_snake
 import pandas as pd
 from datetime import datetime, timezone
 
-
-from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
-from metric_coordinator.configs import type_map, MIN_TIME
-from metric_coordinator.model import DataRetriever, MetricData
-
 from account_metrics import MT5Deal, MT5DealDaily
 
+from metric_coordinator.data_retriever.basic_data_retriever import BasicDataRetriever
+from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
+from metric_coordinator.configs import MIN_TIME
+from metric_coordinator.model import MetricData
+from metric_coordinator.metric_runner import MetricRunner
 
-class ClickhouseDataRetriever(DataRetriever):
-    def __init__(self,username:str, password:str, host:str, http_port:str, database:str,
-                 server:str= None, retrieve_table:Dict[str,str]= None,
-                 metric_table_names:Dict[type[MetricData],str]= {}) -> None: 
-        self.client = ClickhouseClient(username=username, password=password, 
-                                          host=host, http_port=http_port, database=database) 
-        self.server = server
-        self.retriave_table = retrieve_table
-        assert self.server is not None and self.retriave_table is not None, "Server and retrieve_table must be provided"
-        
-        self.last_retrieve_timestamp = MIN_TIME
-        self.metric_table_names = metric_table_names
+
+class ClickhouseDataRetriever(BasicDataRetriever):
+    def __init__(self,filters:Dict[str,Any],
+                 client:ClickhouseClient,
+                 metrics_runner: MetricRunner,
+                 server:str,
+                 table_name:str) -> None: 
+        super().__init__(filters,metrics_runner,server)
+        self.client = client
+        self.table_name = table_name
 
     def __str__(self) -> str:
         return f"Clickhouse({self.client},{self.get_server()},{self.retriave_table})"
     
     def get_metric_name(self, metric):
-        metric_name = to_snake(metric.__name__) if not self.metric_table_names else self.metric_table_names[metric]
+        metric_name = to_snake(metric.__name__) if not self.table_name else self.table_name
         return metric_name
         
     # DataRetriever Implementation
@@ -46,21 +44,20 @@ class ClickhouseDataRetriever(DataRetriever):
     def retrieve_data(
         self,
         from_time: Annotated[int, "timestamp time-server"],
-        to_time: Annotated[int, "timestamp time-utc"],
-        filters: Dict[str, Any],
-    ) -> Dict[str, pd.DataFrame]:
-        self.validate(filters)
+        to_time: Annotated[int, "timestamp time-utc"]
+    ) -> pd.DataFrame:
+        self.validate(self.filters)
         # Convert from_time from server time to UTC time
         from_time_utc = int(datetime.fromtimestamp(from_time, tz=timezone.utc).timestamp())
-        data = {}
         skip_retrieve = False
+        data = None
         for retrieve_data, retrieve_table in self.retriave_table.items():
             if retrieve_data == "Deal":
-                data[retrieve_data] = self._retrieve_deal(retrieve_table,from_time_utc,to_time,filters,skip_retrieve)
+                data = self._retrieve_deal(retrieve_table,from_time_utc,to_time,self.filters,skip_retrieve)
             elif retrieve_data == "History":
-                data[retrieve_data] = self._retrieve_history(retrieve_table,to_time,filters,skip_retrieve)
-            if  data[retrieve_data].empty:
-                if "nullable_retrieve" not in filters or retrieve_data not in filters["nullable_retrieve"]:
+                data = self._retrieve_history(retrieve_table,to_time,self.filters,skip_retrieve)
+            if  data.empty:  
+                if "nullable_retrieve" not in self.filters or retrieve_data not in self.filters["nullable_retrieve"]:
                     skip_retrieve = True
         
         if not skip_retrieve:
@@ -107,35 +104,43 @@ class ClickhouseDataRetriever(DataRetriever):
     def get_last_retrieve_timestamp(self) -> Annotated[int, "timestamp"]:
         return self.last_retrieve_timestamp
     
+    def drop_metric(self, metric: type[MetricData]) -> Literal[True]:
+        metric_name = self.get_metric_name(metric)
+        self.client.drop_tables([metric_name])
+    
+    def drop_metrics(self, metrics: List[MetricData]) -> Literal[True]:
+        metric_names = [self.get_metric_name(metric) for metric in metrics]
+        self.client.drop_tables(metric_names)
+    
     def update_last_retrieve_timestamp(self,to_time:int) -> None:
         # from api_client.mt5manager_client import manager
         # self.last_retrieve_timestamp = to_time + manager.TimeGet().TimeZone * 60 + 3600 * (manager.TimeGet().DaylightState)
         # TODO: change to max deal timestamp
         self.last_retrieve_timestamp = to_time
 
-    def get_current_metric(self, metric: type[MetricData], from_time: int | None = None) -> pd.DataFrame:
-        metric_name = self.get_metric_name(metric)
+    # def get_current_metric(self, metric: type[MetricData], from_time: int | None = None) -> pd.DataFrame:
+    #     metric_name = self.get_metric_name(metric)
 
-        column_groupby = [k for k, v in metric.model_fields.items() if "groupby" in v.metadata]
-        groupby = ", ".join(column_groupby)
+    #     column_groupby = [k for k, v in metric.model_fields.items() if "groupby" in v.metadata]
+    #     groupby = ", ".join(column_groupby)
         
-        # TODO: specify a field in MetricData to specify how to get the current metric
-        if metric in [MT5Deal, MT5DealDaily]:
-            query = f"""
-            SELECT {metric_name}.* 
-            FROM {metric_name} FINAL 
-            {f"WHERE timestamp_server <  {from_time}" if from_time else ""}
-            """
-        else:
-            query = f"""
-            SELECT {metric_name}.*
-            FROM {metric_name} FINAL
-            INNER JOIN (
-                SELECT {groupby}, max(deal_id) as deal_id
-                FROM {metric_name} FINAL
-                {f"WHERE timestamp_server <  {from_time}" if from_time else ""}
-                GROUP BY {groupby}) as max_deal
-                ON {" AND ".join([f"max_deal.{c} = {metric_name}.{c}" for c in column_groupby])} AND
-                    max_deal.deal_id = {metric_name}.deal_id
-            """
-        return self.client.query_df(query)
+    #     # TODO: specify a field in MetricData to specify how to get the current metric
+    #     if metric in [MT5Deal, MT5DealDaily]:
+    #         query = f"""
+    #         SELECT {metric_name}.* 
+    #         FROM {metric_name} FINAL 
+    #         {f"WHERE timestamp_server <  {from_time}" if from_time else ""}
+    #         """
+    #     else:
+    #         query = f"""
+    #         SELECT {metric_name}.*
+    #         FROM {metric_name} FINAL
+    #         INNER JOIN (
+    #             SELECT {groupby}, max(deal_id) as deal_id
+    #             FROM {metric_name} FINAL
+    #             {f"WHERE timestamp_server <  {from_time}" if from_time else ""}
+    #             GROUP BY {groupby}) as max_deal
+    #             ON {" AND ".join([f"max_deal.{c} = {metric_name}.{c}" for c in column_groupby])} AND
+    #                 max_deal.deal_id = {metric_name}.deal_id
+    #         """
+    #     return self.client.query_df(query)

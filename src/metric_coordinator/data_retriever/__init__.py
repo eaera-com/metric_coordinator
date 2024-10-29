@@ -1,3 +1,1 @@
-import metric_coordinator.data_retriever.mt5_data_retriever
-import metric_coordinator.data_retriever.clickhouse_data_retriever
-import metric_coordinator.data_retriever.basic_data_retriever
+

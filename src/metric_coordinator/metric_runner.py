@@ -6,12 +6,12 @@ from typing import List, Type, Dict
 from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 from account_metrics import METRIC_CALCULATORS
 from metric_coordinator.datastore.clickhouse_datastore import ClickhouseDatastore
-from metric_coordinator.model import DataEmiter, Datastore, MetricData
+from metric_coordinator.model import DataEmiter, Datastore, MetricData, MetricRunnerAPI
 from metric_coordinator.configs import Settings
 
 warnings.filterwarnings("ignore")
 
-class MetricRunner:
+class MetricRunner(MetricRunnerAPI):
     def __init__(self,settings:Settings,input_class:Type[MetricData]) -> None:
         self._metrics = []
         self._emiters:List[DataEmiter]= []
@@ -19,6 +19,26 @@ class MetricRunner:
         self.settings = settings
         self.input_class = input_class
         self.datastore_metric_table_names = None
+    
+    def build(metrics:List[Type[MetricData]],emits:List[DataEmiter],settings:Settings):
+        pass
+    
+    def update_metric(self, metric: Type[MetricData], result: pd.DataFrame) -> None:
+            self.get_datastore(metric).put(result)
+
+    def process_metrics(self,input_data:pd.DataFrame) -> Dict[Type[MetricData],pd.DataFrame]:  
+        results = {}
+        for metric in self._metrics:
+            calculator = METRIC_CALCULATORS[metric]
+            results[metric]  = calculator.calculate(input_data)
+            print(f"Calculated metric: {metric} with {results[metric].shape[0]} rows")
+        self.update_metric(metric, results[metric])
+        return results
+
+    def emit_metrics(self) -> None:
+        # TODO: add logic retry
+        for emiter in self._emiters:
+            emiter.emit_metrics(self._metrics)
 
     def validate(self) -> None:
         # TODO: add logic to validate and detect schema changes
@@ -82,19 +102,3 @@ class MetricRunner:
     def get_datastores(self) -> List[Type[MetricData]]:
         # TODO: check if we should return a list of datastores instead
         return self._datastores.keys()
-    
-    def update_metric(self, metric: Type[MetricData], result: pd.DataFrame) -> None:
-        self.get_datastore(metric).put(result)
-
-    def process_metrics(self,input_data:pd.DataFrame) -> Dict[Type[MetricData],pd.DataFrame]:  
-        results = {}
-        for metric in self._metrics:
-            calculator = METRIC_CALCULATORS[metric]
-            results[metric]  = calculator.calculate(input_data)
-        self.update_metric(metric, results[metric])
-        return results
-
-    def emit_metrics(self) -> None:
-        # TODO: add logic retry
-        for emiter in self._emiters:
-            emiter.emit_metrics(self._metrics)

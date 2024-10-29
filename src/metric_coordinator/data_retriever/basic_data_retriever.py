@@ -4,17 +4,26 @@ from typing import Dict, Any, List
 import pandas as pd
 import abc
 
+from account_metrics.metric_model import MetricData
+
 from metric_coordinator.model import DataRetriever    
 from metric_coordinator.metric_runner import MetricRunner
-from account_metrics import METRIC_CALCULATORS
 
 class BasicDataRetriever(DataRetriever,abc.ABC):
     _supported_filters:List[str] = ["login"] # TODO: support filters by groups
     
-    def __init__(self,filters:Dict[str,Any]) -> None:
+    def __init__(self,filters:Dict[str,Any],metrics_runner:MetricRunner,server:str) -> None:
         self.filters = filters
-        self.metrics_runner: MetricRunner = None
+        self.metrics_runner: MetricRunner = metrics_runner
+        self.input_class = metrics_runner.input_class
+        self.server = server
+    
+    def get_metric_runner(self) -> MetricRunner:
+        return self.metrics_runner
         
+    def get_server(self) -> str:
+        return self.server
+    
     @abc.abstractmethod
     def retrieve_data(self, from_time:int, to_time:int, filters:Dict[str,Any]) -> Dict[str,pd.DataFrame]:
         raise NotImplementedError()
@@ -22,30 +31,17 @@ class BasicDataRetriever(DataRetriever,abc.ABC):
     def get_last_retrieve_timestamp(self) -> int:
         return self.retriever.get_last_retrieve_timestamp()
     
-    def run(self, filters) -> None:
-        # Get current metric
-        for metric in self.metrics:
-            # TODO: Check for better way to get current metric
-            self.currents_metrics[metric] = self.get_sorted_current_metric(metric)
-        
-        # Calculate new metric
+    def run(self) -> None:
         while True:
             from_time = self.retriever.get_last_retrieve_timestamp()
             to_time = int(datetime.now().timestamp())
-            data = self.retriever.retrieve_data(from_time,to_time,filters)
+            data = self.retriever.retrieve_data(from_time,to_time,self.filters)
             if not data['Deal'].empty:
                 number_data_received = {k: v.shape[0] for k,v in data.items()}
-                print(f"Retrieved {number_data_received} deals from: {self.retriever}, with filters: {filters}, from time: {from_time}, to time: {to_time}")
+                print(f"Retrieved {number_data_received} deals from: {self.retriever}, with filters: {self.filters}, from time: {from_time}, to time: {to_time}")
 
             
-            results = {}
-            for metric in self.metrics_runner.get_metrics():
-                results[metric] = METRIC_CALCULATORS[metric].calculate(data,self.currents_metrics[metric])
-                if not results[metric].empty:
-                    print(f"Calculated metric: {metric} with {results[metric].shape[0]} rows")
-
-            for emiter in self.emiters:
-                if emiter.emit(results):
-                    print(f"Emitted to emmiter: {emiter} metrics:{results.keys()}")
-            self.update_current_metrics(results)
+            results = self.metrics_runner.process_metrics(data)
+            self.metrics_runner.emit_metrics(results)
+            
             time.sleep(self.interval)

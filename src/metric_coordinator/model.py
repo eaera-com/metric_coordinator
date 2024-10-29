@@ -40,51 +40,51 @@ class DataEmiter(abc.ABC):
     def initialize_metric(self, metric: Type[MetricData]) -> Literal[True]:
         raise NotImplementedError()
     
-# class MetricRunner(abc.ABC):
+class MetricRunnerAPI(abc.ABC):
     
-#     @abc.abstractmethod
-#     def validate(self) -> None:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def validate(self) -> None:
+        raise NotImplementedError()
     
-#     @abc.abstractmethod
-#     def register_metric(self, metric_class: Type[MetricData]) -> None:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def register_metric(self, metric_class: Type[MetricData]) -> None:
+        raise NotImplementedError()
     
-#     @abc.abstractmethod
-#     def get_metrics(self) -> List[Type[MetricData]]:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def get_metrics(self) -> List[Type[MetricData]]:
+        raise NotImplementedError()
     
-#     @abc.abstractmethod
-#     def register_emitter(self, metric_name: str) -> Type[MetricData]:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def register_emitter(self, metric_name: str) -> Type[MetricData]:
+        raise NotImplementedError()
     
-#     @abc.abstractmethod
-#     def get_emitters(self) -> List[DataEmiter]:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def get_emitters(self) -> List[DataEmiter]:
+        raise NotImplementedError()
     
-#     @abc.abstractmethod
-#     def setup_datastore(self, metric_class: Type[MetricData]) -> Datastore:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def setup_datastore(self, metric_class: Type[MetricData]) -> Datastore:
+        raise NotImplementedError()
     
-#     @abc.abstractmethod
-#     def bind_datastore(self, datastore: Datastore) -> None:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def bind_datastore(self, datastore: Datastore) -> None:
+        raise NotImplementedError()
     
-#     @abc.abstractmethod
-#     def get_datastore(self, metric_class: Type[MetricData]) -> Datastore:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def get_datastore(self, metric_class: Type[MetricData]) -> Datastore:
+        raise NotImplementedError()
     
-#     @abc.abstractmethod
-#     def get_datastores(self) -> List[Datastore]:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def get_datastores(self) -> List[Datastore]:
+        raise NotImplementedError()
     
-#     @abc.abstractmethod
-#     def update_metric(self, metric: Type[MetricData], result: pd.DataFrame) -> None:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def update_metric(self, metric: Type[MetricData], result: pd.DataFrame) -> None:
+        raise NotImplementedError()
     
-#     @abc.abstractmethod
-#     def process_metrics(self,input_metric:pd.DataFrame,input_metric_class:Type[MetricData]) -> None:
-#         raise NotImplementedError()
+    @abc.abstractmethod
+    def process_metrics(self,input_metric:pd.DataFrame,input_metric_class:Type[MetricData]) -> None:
+        raise NotImplementedError()
 
 class DataRetriever(abc.ABC):
     
@@ -95,8 +95,7 @@ class DataRetriever(abc.ABC):
     @abc.abstractmethod
     def retrieve_data(
         self,
-        to_time: Annotated[int, "timestamp time-utc"],
-        filters: Dict[str, Any],
+        to_time: Annotated[int, "timestamp time-utc"]
     ) -> Dict[str, pd.DataFrame]:
         raise NotImplementedError()
     
@@ -113,7 +112,7 @@ class DataRetriever(abc.ABC):
         raise NotImplementedError()
     
     @abc.abstractmethod
-    def run(self, ) -> None:
+    def run(self) -> None:
         raise NotImplementedError()
 
 

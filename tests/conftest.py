@@ -5,7 +5,7 @@ import pandas as pd
 import os
 import datetime
 
-from metric_coordinator.configs import Settings, settings, MIN_TIME
+from metric_coordinator.configs import Settings, MIN_TIME
 from metric_coordinator.data_retriever.clickhouse_data_retriever import ClickhouseDataRetriever
 from metric_coordinator.datastore.clickhouse_datastore import ClickhouseDatastore
 from metric_coordinator.model import MetricData
@@ -31,7 +31,9 @@ def get_test_settings():
                    CLICKHOUSE_HTTP_PORT="8124",
                    CLICKHOUSE_USERNAME="default",
                    CLICKHOUSE_PASSWORD="",
-                   CLICKHOUSE_DATABASE="default")
+                   CLICKHOUSE_DATABASE="default",
+                   MT_GROUPS="test_group",
+                   MT_SERVER="test_server")
 
 def get_test_metric_name(metric:MetricData,test_name:str):
     return f"{test_name}_{to_snake(metric.__name__)}"
@@ -87,7 +89,7 @@ def strip_quotes_from_string_columns(df:pd.DataFrame):
 def retrieve_test_data(ch,from_time:int = MIN_TIME,to_time:int = 1750000000):
     filters = {
         'group_by': 'Group',
-        'group': settings.MT_GROUPS,
+        'group': get_test_settings().MT_GROUPS,
         'nullable_retrieve': ["History"]
     }
     return ch.retrieve_data(from_time, to_time, filters)
