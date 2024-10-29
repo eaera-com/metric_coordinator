@@ -4,7 +4,7 @@ import pandas as pd
 from pydantic.alias_generators import to_snake
 
 from metric_coordinator.model import Datastore, MetricData
-from api_client.clickhouse_client import ClickhouseClient
+from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 
 class ClickhouseDatastore(Datastore):
     def __init__(self, metric:MetricData, client:ClickhouseClient, table_name:str = None) -> None:        

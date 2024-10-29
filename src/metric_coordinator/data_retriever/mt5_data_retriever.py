@@ -4,9 +4,9 @@ from pydantic.alias_generators import to_snake
 import pandas as pd
 
 
-from src.metric_coordinator.configs import MIN_TIME
-from api_client.mt5manager_client import MT5ManagerClient
-from src.metric_coordinator.model import DataRetriever
+from metric_coordinator.configs import MIN_TIME
+from metric_coordinator.api_client.mt5manager_client import MT5ManagerClient
+from metric_coordinator.model import DataRetriever
 
 class MT5DataRetriever(DataRetriever):
     def __init__(self, server: str, server_name: str, login:str,password:str) -> None:

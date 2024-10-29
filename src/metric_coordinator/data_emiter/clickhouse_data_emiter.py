@@ -5,9 +5,9 @@ from pydantic.alias_generators import to_snake
 
 from account_metrics.metric_model import MetricData
 
-from api_client.clickhouse_client import ClickhouseClient
+from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 from metric_coordinator.model import DataEmiter
-from src.metric_coordinator.configs import MIN_TIME,type_map
+from metric_coordinator.configs import MIN_TIME,type_map
 
 class ClickhouseEmitter(DataEmiter):
     

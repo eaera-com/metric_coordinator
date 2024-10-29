@@ -3,7 +3,7 @@ from datetime import datetime
 import warnings
 from typing import List, Type, Dict
 
-from api_client.clickhouse_client import ClickhouseClient
+from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 from account_metrics import METRIC_CALCULATORS
 from metric_coordinator.datastore.clickhouse_datastore import ClickhouseDatastore
 from metric_coordinator.model import DataEmiter, Datastore, MetricData

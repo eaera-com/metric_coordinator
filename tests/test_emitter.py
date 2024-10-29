@@ -7,7 +7,7 @@ import pytest
 
 from account_metrics import AccountMetricByDeal, AccountMetricDaily, AccountSymbolMetricByDeal, MT5Deal, MT5DealDaily, PositionMetricByDeal
 
-from api_client.clickhouse_client import ClickhouseClient
+from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 from metric_coordinator.data_emiter.clickhouse_data_emiter import ClickhouseEmitter
 from tests.conftest import TEST_METRICS, get_test_metric_name
 from metric_coordinator.configs import settings

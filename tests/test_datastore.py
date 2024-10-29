@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 from pandas.testing import assert_series_equal
 
-from api_client.clickhouse_client import ClickhouseClient
+from metric_coordinator.data_retriever.clickhouse_data_retriever import ClickhouseClient
 from account_metrics import MT5DealDaily, MetricData
 from metric_coordinator.datastore.clickhouse_datastore import ClickhouseDatastore
 from tests.conftest import TEST_DATAFRAME_PATH, TEST_METRICS, get_default_metric_data, get_metric_from_csv, get_test_metric_name, get_test_settings, insert_data, setup_date_column_type

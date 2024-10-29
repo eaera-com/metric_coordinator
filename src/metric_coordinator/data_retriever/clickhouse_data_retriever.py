@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime, timezone
 
 
-from api_client.clickhouse_client import ClickhouseClient
+from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 from metric_coordinator.configs import type_map, MIN_TIME
 from metric_coordinator.model import DataRetriever, MetricData
 
