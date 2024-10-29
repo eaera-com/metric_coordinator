@@ -1,6 +1,7 @@
-import src.metric_coordinator.metric_runner
-import src.metric_coordinator.data_emiter
-import src.metric_coordinator.configs
-import src.metric_coordinator.model
-import src.metric_coordinator.data_retriever
-
+import metric_coordinator.metric_runner
+import metric_coordinator.data_emiter
+import metric_coordinator.configs
+import metric_coordinator.model
+import metric_coordinator.data_retriever
+import metric_coordinator.datastore
+import metric_coordinator.api_client

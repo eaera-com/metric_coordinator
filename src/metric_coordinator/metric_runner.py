@@ -18,8 +18,10 @@ class MetricRunner:
         self._datastores:Dict[Type[MetricData],Datastore] = {}
         self.settings = settings
         self.input_class = input_class
+        self.datastore_metric_table_names = None
 
     def validate(self) -> None:
+        # TODO: add logic to validate and detect schema changes
         pass
     
     def setup_clickhouse_client(self) -> None:
@@ -29,6 +31,15 @@ class MetricRunner:
                                           http_port=self.settings.CLICKHOUSE_HTTP_PORT, 
                                           database=self.settings.CLICKHOUSE_DATABASE)
     
+    def setup_datastore(self, metric_class: Type[MetricData]) -> Datastore:
+        if not self.client:
+            raise ValueError("Clickhouse client not initialized before setting up clickhouse datastore")
+        table_name = None if self.datastore_metric_table_names is None or metric_class not in self.datastore_metric_table_names else self.datastore_metric_table_names.get(metric_class)
+        return ClickhouseDatastore(metric_class,self.client,table_name=table_name)
+    
+    def setup_datasore_metric_table_names(self, metric_table_names:Dict[Type[MetricData],str]) -> None:
+        self.datastore_metric_table_names = metric_table_names
+    
     def register_metric(self, metric_class: Type[MetricData]) -> None:
         print(f"Start registering metric {metric_class}")
         calculator = METRIC_CALCULATORS[metric_class]
@@ -37,32 +48,31 @@ class MetricRunner:
         if calculator.input_class != self.input_class:
             raise ValueError(f"Metric {metric_class} does not support input class {self.input_class}")
         self._metrics.append(metric_class)
-        # TODO: uncomment when package is updated
-        # metric_class.set_metric_runner(self)
+        calculator.set_metric_runner(self)
 
         for metric in calculator.additional_data:
             self.bind_datastore(metric)
         for emiter in self._emiters:
             emiter.initialize_metric(metric_class)
         print(f"Metric {metric_class} registered")
-        
-    def get_metrics(self) -> List[Type[MetricData]]:
-        return self._metrics
     
     def register_emitter(self, dataEmiter: DataEmiter) -> None:
         self._emiters.append(dataEmiter)
         for metric in self._metrics:
             dataEmiter.initialize_metric(metric)
+            
+    def get_metrics(self) -> List[Type[MetricData]]:
+        return self._metrics
     
     def get_emitters(self) -> List[DataEmiter]:
         return self._emiters
     
-    def setup_datastore(self, metric_class: Type[MetricData]) -> Datastore:
-        return ClickhouseDatastore(metric_class,self.client)
-    
     def bind_datastore(self, metric_class: Type[MetricData]) -> None:
+        if metric_class in self._datastores:
+            return
         datastore = self.setup_datastore(metric_class)
         self._datastores[metric_class] = datastore
+        print(f"Successfully bind Datastore {metric_class}")
     
     def get_datastore(self, metric_class: Type[MetricData]) -> Datastore:
         if metric_class not in self._datastores:
@@ -75,3 +85,16 @@ class MetricRunner:
     
     def update_metric(self, metric: Type[MetricData], result: pd.DataFrame) -> None:
         self.get_datastore(metric).put(result)
+
+    def process_metrics(self,input_data:pd.DataFrame) -> Dict[Type[MetricData],pd.DataFrame]:  
+        results = {}
+        for metric in self._metrics:
+            calculator = METRIC_CALCULATORS[metric]
+            results[metric]  = calculator.calculate(input_data)
+        self.update_metric(metric, results[metric])
+        return results
+
+    def emit_metrics(self) -> None:
+        # TODO: add logic retry
+        for emiter in self._emiters:
+            emiter.emit_metrics(self._metrics)
