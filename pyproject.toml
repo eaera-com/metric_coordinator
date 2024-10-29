@@ -1,0 +1,153 @@
+[tool.poetry]
+name = "metric-coordinator"
+version = "0.1.0"
+description = ""
+authors = ["Luna Lovegood <luna@Lovegood>"]
+readme = "README.md"
+
+[project]
+name = "metric-coordinator"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Luna Lovegood", email = "tienduc.nguyen@eaera.com"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic-settings = "^2.2.1"
+pytest = "^8.0.2"
+pytest-coverage = "^0.0"
+pytest-asyncio = "^0.23.5.post1"
+pytest-xdist = "^3.5.0"
+pre-commit = "^3.7.0"
+icecream = "^2.1.3"
+
+clickhouse-connect = "^0.7.8"
+pandas = "^2.2.2"
+nats-py = "^2.7.2"
+confluent-kafka = "^2.4.0"
+[tool.black]
+color=true
+exclude = '''
+    /(
+        \.git
+        | \._build
+        | \.back.out
+        | \.build
+        | \.coverage
+        | \.dist
+        | \.hg
+        | \.mypy_cache
+        | \.tox
+        | \.venv
+        | ./src/coverage
+        | blib2to3
+        | tests/data
+    )/
+'''
+include = '\.pyi?$'
+line-length = 140
+
+[tool.isort]
+color_output = true
+combine_as_imports = true
+ensure_newline_before_comments = true
+force_alphabetical_sort_within_sections = true
+force_grid_wrap = 0
+include_trailing_comma = true
+line_length = 119
+lines_between_sections = 1
+force_single_line = true
+profile = "black"
+skip = [
+    ".coverage",
+    "coverage/*",
+    "cov.html",
+    ".dockerignore",
+    ".env",
+    ".github",
+    ".gitignore",
+    ".html",
+    ".md",
+    ".python-version",
+    ".rst",
+    ".xml"
+]
+skip_gitignore = true
+skip_glob = [
+    "src/repository/migrations/**",
+]
+src_paths = [
+    "src/",
+    "tests/",
+]
+use_parentheses = true
+
+[tool.mypy]
+check_untyped_defs = true
+color_output = true
+error_summary = true
+exclude = "(build|data|dist|docs/src|images|logo|logs|output)/"
+ignore_missing_imports = true
+pretty = true
+strict_optional = true
+warn_no_return = true
+warn_return_any = false
+install_types = true
+non_interactive = true
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test", "Acceptance"]
+python_functions = ["test_*"]
+testpaths = "tests"
+filterwarnings = "error"
+addopts = '''
+    --verbose
+    -p no:warnings
+    --strict-markers
+    --tb=short
+    --cov=src
+    --cov=tests
+    --cov-branch
+    --cov-report=term-missing
+    --cov-report=html:coverage/cov.html
+    --cov-report=xml:coverage/cov.xml
+    --no-cov-on-fail
+    --cov-fail-under=63
+    --numprocesses=auto
+    --asyncio-mode=auto
+'''
+
+[tool.pylint.messages_control]
+disable = [
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-instance-attributes",
+    "too-many-lines",
+    "redefined-outer-name",
+    "consider-using-f-string",
+    "broad-except",
+    "import-error",
+    "too-few-public-methods",
+    "expression-not-assigned",
+    "keyword-arg-before-vararg",
+    "use-dict-literal",
+    "fixme",
+    "redefined-builtin",
+    "global-statement",
+]
+
+[tool.pylint.basic]
+no-docstring-rgx = "(^_|test_)"
+
+[tool.ruff]
+line-length = 119
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "W", "Q", "I"]
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 20

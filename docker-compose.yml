@@ -1,0 +1,117 @@
+---
+version: "3.4"
+
+services:
+  # metric_coordinator:
+  #   image: metric_coordinator
+  #   build:
+  #     context: .
+  #     dockerfile: ./Dockerfile
+  #   ports:
+  #     - "8123:8123"  # Exposed for host access if needed
+  #     - "9000:9000"
+  #   environment:
+  #     - CLICKHOUSE_HOST=clickhouse
+  #     - CLICKHOUSE_PORT=8123
+  #   depends_on:
+  #     clickhouse:
+  #       condition: service_healthy
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8124:8123"  # Host:Container (for host access, not used by account_metrics)
+      - "9001:9000"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://clickhouse:8123/ping"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.2.1
+  #   tmpfs: "/datalog"
+  #   restart: always
+  #   hostname: zookeeper
+  #   healthcheck:
+  #     test: echo srvr | nc zookeeper 2181 || exit 1
+  #     retries: 20
+  #     interval: 10s
+  #   ports:
+  #     - 2181:2181
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.2.1
+  #   depends_on:
+  #     - zookeeper
+  #   ports:
+  #     - "29092:29092"
+  #     - "9092:9092"
+  #     - "29094:29094"
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+  #     KAFKA_ADVERTISED_HOST_NAME: kafka
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_EXTER:PLAINTEXT
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://kafka:29092,PLAINTEXT_EXTER://localhost:29094
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  #     KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  #     KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schemaregistry:8085
+  #   healthcheck:
+  #     test: kafka-topics --bootstrap-server kafka:9092 --list || exit 1
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # schemaregistry:
+  #   image: confluentinc/cp-schema-registry:7.2.1
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #   ports:
+  #     - 8085:8085
+  #   environment:
+  #     SCHEMA_REGISTRY_HOST_NAME: schemaregistry
+  #     SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+  #     SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
+  #     SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8085
+  #     SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
+  #   healthcheck:
+  #     test: curl -f http://schemaregistry:8085 || exit 1
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 5
+
+  # kafka-ui:
+  #   image: provectuslabs/kafka-ui:latest
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #   ports:
+  #     - 8080:8080
+  #   environment:
+  #     KAFKA_CLUSTERS_0_NAME: local
+  #     KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+  #     KAFKA_CLUSTERS_0_ZOOKEEPER: localhost:2181
+  #     KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schemaregistry:8085
+
+
+  # nats:
+  #   image: nats:latest
+  #   ports:
+  #     - 4222:4222
+  #     - 8222:8222
+  #   healthcheck:
+  #     test: curl -f http://nats:4222 || exit 1
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 5
