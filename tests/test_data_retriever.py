@@ -15,7 +15,6 @@ def setup_and_teardown_clickhouse_retriever(request):
     test_name = request.node.name
     settings = get_test_settings()
     ch = ClickhouseDataRetriever(filters = {'group_by': 'Group','group': settings.MT_GROUPS},
-                                  metrics_runner=MetricRunner(get_test_settings(),MT5Deal),
                                   client=ClickhouseClient(username=settings.CLICKHOUSE_USERNAME,
                                             password=settings.CLICKHOUSE_PASSWORD,
                                             host=settings.CLICKHOUSE_HOST,
@@ -31,14 +30,15 @@ def setup_and_teardown_clickhouse_retriever(request):
         raise ValueError(f"Failed to create metric {get_test_metric_name(MT5Deal,test_name)}")
     
     insert_data(ch,MT5Deal,test_name)
+    metrics_runner=MetricRunner(get_test_settings(),MT5Deal)
         
-    yield ch,test_name
+    yield ch,metrics_runner,test_name
 
     for metric in TEST_METRICS:
         ch.drop_metric(metric)
     
 def test_clickhouse_retriever_retrieve_data(setup_and_teardown_clickhouse_retriever):
-    # ch_retriever,test_name = setup_and_teardown_clickhouse_retriever
+    # ch_retriever,_,test_name = setup_and_teardown_clickhouse_retriever
     # for metric in TEST_METRICS:
     #     insert_data(ch_retriever,metric,test_name)
         

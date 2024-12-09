@@ -46,7 +46,7 @@ def test_metric_runner_initialization(setup_teardown_metric_runner_after_test):
     assert metric_runner._emiters == []
     assert metric_runner._datastores == {}
     metric_runner.setup_clickhouse_client()
-    assert metric_runner.client is not None
+    assert metric_runner.clickhouse_client is not None
     
     for metric in TEST_METRICS:
         if metric in [MT5Deal, MT5DealDaily]:
@@ -55,7 +55,7 @@ def test_metric_runner_initialization(setup_teardown_metric_runner_after_test):
         assert METRIC_CALCULATORS[metric].get_metric_runner() == metric_runner
         for additional_metric in METRIC_CALCULATORS[metric].additional_data:
             assert metric_runner.get_datastore(additional_metric) is not None and isinstance(metric_runner.get_datastore(additional_metric), Datastore)
-    metric_runner.register_emitter(ClickhouseEmitter(metric_runner.client,server=get_test_settings().SERVER_NAME))
+    metric_runner.register_emitter(ClickhouseEmitter(metric_runner.get_clickhouse_client(),server=get_test_settings().SERVER_NAME))
     metric_runner.register_emitter(LoggingEmitter())
     assert len(metric_runner.get_emitters()) == 2
 

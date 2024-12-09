@@ -38,7 +38,8 @@ class ClickhouseEmitter(DataEmiter):
     def get_last_emit_timestamp(self,metric: type[MetricData], logins: list[int] = []) -> Annotated[int, "timestamp"]:
         metric_name = self.get_metric_name(metric)
 
-        query = f"SELECT max(timestamp_server) FROM {metric_name} FINAL WHERE server='{self.get_server()}' {f"AND login IN ({','.join(map(str, logins))}" if logins else ""}"
+        query = f"SELECT max(timestamp_server) FROM {metric_name} FINAL WHERE server='{self.get_server()}' AND login IN ({','.join(map(str, logins))})" if logins else \
+            f"SELECT max(timestamp_server) FROM {metric_name} FINAL WHERE server='{self.get_server()}'"
 
         return max(self.client.query_ddl(query).first_item.get("max(timestamp_server)"), MIN_TIME)
     

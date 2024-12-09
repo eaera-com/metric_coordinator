@@ -12,14 +12,9 @@ from metric_coordinator.metric_runner import MetricRunner
 class BasicDataRetriever(DataRetriever,abc.ABC):
     _supported_filters:List[str] = ["login"] # TODO: support filters by groups
     
-    def __init__(self,filters:Dict[str,Any],metrics_runner:MetricRunner,server:str) -> None:
+    def __init__(self,filters:Dict[str,Any],server:str) -> None:
         self.filters = filters
-        self.metrics_runner: MetricRunner = metrics_runner
-        self.input_class = metrics_runner.input_class
         self.server = server
-    
-    def get_metric_runner(self) -> MetricRunner:
-        return self.metrics_runner
         
     def get_server(self) -> str:
         return self.server
@@ -31,17 +26,16 @@ class BasicDataRetriever(DataRetriever,abc.ABC):
     def get_last_retrieve_timestamp(self) -> int:
         return self.retriever.get_last_retrieve_timestamp()
     
-    def run(self) -> None:
+    def run(self,metric_runner:MetricRunner) -> None:
         while True:
             from_time = self.retriever.get_last_retrieve_timestamp()
             to_time = int(datetime.now().timestamp())
-            data = self.retriever.retrieve_data(from_time,to_time,self.filters)
-            if not data['Deal'].empty:
-                number_data_received = {k: v.shape[0] for k,v in data.items()}
+            input_data = self.retrieve_data(from_time,to_time,self.filters)
+            if not input_data['Deal'].empty:
+                number_data_received = {k: v.shape[0] for k,v in input_data.items()}
                 print(f"Retrieved {number_data_received} deals from: {self.retriever}, with filters: {self.filters}, from time: {from_time}, to time: {to_time}")
-
             
-            results = self.metrics_runner.process_metrics(data)
-            self.metrics_runner.emit_metrics(results)
+            results = metric_runner.process_metrics(input_data)
+            metric_runner.emit_metrics(results)
             
             time.sleep(self.interval)

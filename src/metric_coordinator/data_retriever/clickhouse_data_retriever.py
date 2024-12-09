@@ -1,7 +1,9 @@
+import sys
+import traceback
 from typing import Annotated, List, Literal, Dict, Any
 from pydantic.alias_generators import to_snake
 import pandas as pd
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 
 from account_metrics import MT5Deal, MT5DealDaily
 
@@ -15,10 +17,9 @@ from metric_coordinator.metric_runner import MetricRunner
 class ClickhouseDataRetriever(BasicDataRetriever):
     def __init__(self,filters:Dict[str,Any],
                  client:ClickhouseClient,
-                 metrics_runner: MetricRunner,
                  server:str,
                  table_name:str) -> None: 
-        super().__init__(filters,metrics_runner,server)
+        super().__init__(filters,server)
         self.client = client
         self.table_name = table_name
 
@@ -28,8 +29,12 @@ class ClickhouseDataRetriever(BasicDataRetriever):
     def get_metric_name(self, metric):
         metric_name = to_snake(metric.__name__) if not self.table_name else self.table_name
         return metric_name
-        
+    
     # DataRetriever Implementation
+    def run(self,metric_runner:MetricRunner) -> None:
+        metric_runner.setup_clickhouse_client()
+        super().run(metric_runner)     
+               
     def validate(self,filters: Dict[str, Any]) -> None:
         if "group_by" in filters:
             if filters["group_by"] not in ["Group", "Login"]:
@@ -73,7 +78,7 @@ class ClickhouseDataRetriever(BasicDataRetriever):
             
         if "group_by" in filters and filters["group_by"] == "Login":
             logins = filters['logins']
-            deal_query = f"SELECT * FROM {table_name} FINAL WHERE TimeUTC >= {from_time} AND TimeUTC <= {to_time} AND server='{self.get_server()}' {f'AND login IN ({",".join(map(str, logins))})' if logins else ''}"
+            deal_query = f"SELECT * FROM {table_name} FINAL WHERE TimeUTC >= {from_time} AND TimeUTC <= {to_time} AND server='{self.get_server()}' AND login IN ({','.join(map(str, logins))})"
         else:
             deal_query = f"SELECT * FROM {table_name} FINAL WHERE TimeUTC >= {from_time} AND TimeUTC <= {to_time} AND server='{self.get_server()}'"
         df_deal = self.client.query_df(deal_query)
@@ -92,7 +97,7 @@ class ClickhouseDataRetriever(BasicDataRetriever):
             history_query = f"SELECT * FROM {table_name} FINAL WHERE timestamp_utc >= {MIN_TIME} AND timestamp_utc <= {to_time} ORDER BY timestamp_utc"
         elif "group_by" in filters and filters["group_by"] == "Login":
             logins = filters['logins']
-            history_query = f"SELECT * FROM {table_name} FINAL WHERE timestamp_utc >= {MIN_TIME} AND timestamp_utc <= {to_time} {f'AND login IN ({",".join(map(str, logins))})' if logins else ''} ORDER BY timestamp_utc"
+            history_query = f"SELECT * FROM {table_name} FINAL WHERE timestamp_utc >= {MIN_TIME} AND timestamp_utc <= {to_time} AND login IN ({','.join(map(str, logins))}) ORDER BY timestamp_utc"
 
         df_history = self.client.query_df(history_query)
         if not isinstance(df_history,pd.DataFrame) or df_history.empty:
@@ -117,30 +122,3 @@ class ClickhouseDataRetriever(BasicDataRetriever):
         # self.last_retrieve_timestamp = to_time + manager.TimeGet().TimeZone * 60 + 3600 * (manager.TimeGet().DaylightState)
         # TODO: change to max deal timestamp
         self.last_retrieve_timestamp = to_time
-
-    # def get_current_metric(self, metric: type[MetricData], from_time: int | None = None) -> pd.DataFrame:
-    #     metric_name = self.get_metric_name(metric)
-
-    #     column_groupby = [k for k, v in metric.model_fields.items() if "groupby" in v.metadata]
-    #     groupby = ", ".join(column_groupby)
-        
-    #     # TODO: specify a field in MetricData to specify how to get the current metric
-    #     if metric in [MT5Deal, MT5DealDaily]:
-    #         query = f"""
-    #         SELECT {metric_name}.* 
-    #         FROM {metric_name} FINAL 
-    #         {f"WHERE timestamp_server <  {from_time}" if from_time else ""}
-    #         """
-    #     else:
-    #         query = f"""
-    #         SELECT {metric_name}.*
-    #         FROM {metric_name} FINAL
-    #         INNER JOIN (
-    #             SELECT {groupby}, max(deal_id) as deal_id
-    #             FROM {metric_name} FINAL
-    #             {f"WHERE timestamp_server <  {from_time}" if from_time else ""}
-    #             GROUP BY {groupby}) as max_deal
-    #             ON {" AND ".join([f"max_deal.{c} = {metric_name}.{c}" for c in column_groupby])} AND
-    #                 max_deal.deal_id = {metric_name}.deal_id
-    #         """
-    #     return self.client.query_df(query)

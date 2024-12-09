@@ -19,9 +19,14 @@ class MetricRunner(MetricRunnerAPI):
         self.settings = settings
         self.input_class = input_class
         self.datastore_metric_table_names = None
+        self.clickhouse_client = None
     
-    def build(metrics:List[Type[MetricData]],emits:List[DataEmiter],settings:Settings):
-        pass
+    def build(self,metrics:List[Type[MetricData]],emits:List[DataEmiter]):
+        for metric in metrics:
+            self.register_metric(metric)
+        for emiter in emits:
+            self.register_emitter(emiter)
+        self.setup_datastore_metric_table_names()
     
     def update_metric(self, metric: Type[MetricData], result: pd.DataFrame) -> None:
             self.get_datastore(metric).put(result)
@@ -45,17 +50,18 @@ class MetricRunner(MetricRunnerAPI):
         pass
     
     def setup_clickhouse_client(self) -> None:
-        self.client = ClickhouseClient(username=self.settings.CLICKHOUSE_USERNAME, 
+        if not self.clickhouse_client:
+            self.clickhouse_client = ClickhouseClient(username=self.settings.CLICKHOUSE_USERNAME, 
                                           password=self.settings.CLICKHOUSE_PASSWORD, 
                                           host=self.settings.CLICKHOUSE_HOST, 
                                           http_port=self.settings.CLICKHOUSE_HTTP_PORT, 
                                           database=self.settings.CLICKHOUSE_DATABASE)
     
     def setup_datastore(self, metric_class: Type[MetricData]) -> Datastore:
-        if not self.client:
+        if not self.clickhouse_client:
             raise ValueError("Clickhouse client not initialized before setting up clickhouse datastore")
         table_name = None if self.datastore_metric_table_names is None or metric_class not in self.datastore_metric_table_names else self.datastore_metric_table_names.get(metric_class)
-        return ClickhouseDatastore(metric_class,self.client,table_name=table_name)
+        return ClickhouseDatastore(metric_class,self.clickhouse_client,table_name=table_name)
     
     def setup_datasore_metric_table_names(self, metric_table_names:Dict[Type[MetricData],str]) -> None:
         self.datastore_metric_table_names = metric_table_names
@@ -102,3 +108,11 @@ class MetricRunner(MetricRunnerAPI):
     def get_datastores(self) -> List[Type[MetricData]]:
         # TODO: check if we should return a list of datastores instead
         return self._datastores.keys()
+    
+    def get_clickhouse_client(self) -> ClickhouseClient:
+        return self.clickhouse_client
+    
+    def drop_datastores(self) -> None:
+        for metric in self._datastores.keys():
+            self._datastores[metric].drop()
+        self._datastores = {}

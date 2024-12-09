@@ -33,12 +33,15 @@ class MT5DealDailyDatastore(Datastore):
             return f"'{value}'"
         return str(value)
     
-    def eager_load(self) -> pd.DataFrame:
-        keys = {"login": login_list}
-        keys = {"login": login}
-        query = f"""
-        SELECT * FROM {self.get_metric_name()} FINAL WHERE {self.get_metric_fields(keys)}
-        ORDER BY timestamp_server DESC
-        """
-        result = self.client.query_df(query)
-        return result
+    def drop(self) -> None:
+        self.client.drop_metric(self.get_metric_name())
+    
+    # def eager_load(self) -> pd.DataFrame:
+    #     keys = {"login": login_list}
+    #     keys = {"login": login}
+    #     query = f"""
+    #     SELECT * FROM {self.get_metric_name()} FINAL WHERE {self.get_metric_fields(keys)}
+    #     ORDER BY timestamp_server DESC
+    #     """
+    #     result = self.client.query_df(query)
+    #     return result

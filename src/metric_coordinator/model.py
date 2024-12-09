@@ -27,6 +27,10 @@ class Datastore(object):
     def close(self) -> None:
         raise NotImplementedError()
     
+    @abc.abstractmethod
+    def drop(self) -> None:
+        raise NotImplementedError()
+    
 class DataEmiter(abc.ABC): 
     @abc.abstractmethod 
     def emit(self, data: Dict[MetricData,pd.DataFrame]) -> Literal[True]:
@@ -105,10 +109,6 @@ class DataRetriever(abc.ABC):
     
     @abc.abstractmethod
     def get_last_retrieve_timestamp(self) -> Annotated[int, "timestamp"]:
-        raise NotImplementedError()
-    
-    @abc.abstractmethod
-    def get_metric_runner(self) -> Annotated[Any, "MetricRunner"]:
         raise NotImplementedError()
     
     @abc.abstractmethod
