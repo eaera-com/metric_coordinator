@@ -118,7 +118,5 @@ class ClickhouseDataRetriever(BasicDataRetriever):
         self.client.drop_tables(metric_names)
     
     def update_last_retrieve_timestamp(self,to_time:int) -> None:
-        # from api_client.mt5manager_client import manager
-        # self.last_retrieve_timestamp = to_time + manager.TimeGet().TimeZone * 60 + 3600 * (manager.TimeGet().DaylightState)
         # TODO: change to max deal timestamp
         self.last_retrieve_timestamp = to_time

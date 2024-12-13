@@ -6,9 +6,9 @@ from pandas.testing import assert_series_equal
 from metric_coordinator.data_retriever.clickhouse_data_retriever import ClickhouseClient
 from account_metrics import MT5DealDaily, MetricData
 from metric_coordinator.datastore.clickhouse_datastore import ClickhouseDatastore
-from tests.conftest import TEST_DATAFRAME_PATH, TEST_METRICS, get_default_metric_data, get_metric_from_csv, get_test_metric_name, get_test_settings, insert_data, setup_date_column_type
+from tests.conftest import TEST_DATAFRAME_PATH, TEST_METRICS, get_metric_from_csv, get_test_metric_name, get_test_settings, insert_data, setup_date_column_type
 from metric_coordinator.configs import type_map
-
+from metric_coordinator.datastore.local_datastore import LocalDatastore
 
 @pytest.fixture
 def setup_and_teardown_clickhouse_datastore(request):
@@ -36,6 +36,22 @@ def setup_and_teardown_clickhouse_datastore(request):
     for metric in TEST_METRICS:
        datastores[metric].close()
 
+@pytest.fixture
+def setup_and_teardown_local_datastore(request):
+    test_name = request.node.name
+    datastores = {}
+    for metric in TEST_METRICS:
+        datastores[metric] = LocalDatastore(metric)
+    yield datastores,test_name
+    for metric in TEST_METRICS:
+        datastores[metric].close()
+
+def sample_dataframe_of_metric(metric:MetricData,num_rows:int=1000):
+    pass
+
+def insert_data_to_local_datastore(local_datastore:LocalDatastore,dataframe:pd.DataFrame):
+    local_datastore.put(dataframe)
+        
 def convert_date_column(row:pd.Series,metric:MetricData):
     # TODO: fix this problem with date columns
     if 'date' in metric.model_fields:
@@ -44,56 +60,70 @@ def convert_date_column(row:pd.Series,metric:MetricData):
         row['Date'] = row['Date'].date()
     return row
 
-def test_clickhouse_datastore_get_latest_row(setup_and_teardown_clickhouse_datastore):
-    ch_datastores,test_name = setup_and_teardown_clickhouse_datastore
-    expected_dataframes = {metric:get_metric_from_csv(metric,TEST_DATAFRAME_PATH[metric]) for metric in TEST_METRICS}
-    for metric in TEST_METRICS:
-        insert_data(ch_datastores[metric],metric,test_name)
-    for metric in TEST_METRICS:
-        expected_last_row = expected_dataframes[metric].iloc[-1]
-        key_last_row = expected_last_row[metric.Meta.key_columns]
-        retrieved_latest_row = ch_datastores[metric].get_latest_row({k:key_last_row[k] for k in metric.Meta.key_columns})
-        retrieved_latest_row = convert_date_column(retrieved_latest_row,metric)
-        assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)
+class TestClickhouseDatastore:
+    @staticmethod
+    def test_clickhouse_datastore_get_latest_row(setup_and_teardown_clickhouse_datastore):
+        ch_datastores,test_name = setup_and_teardown_clickhouse_datastore
+        expected_dataframes = {metric:get_metric_from_csv(metric,TEST_DATAFRAME_PATH[metric]) for metric in TEST_METRICS}
+        for metric in TEST_METRICS:
+            insert_data(ch_datastores[metric],metric,test_name)
+        for metric in TEST_METRICS:
+            expected_last_row = expected_dataframes[metric].iloc[-1]
+            key_last_row = expected_last_row[metric.Meta.key_columns]
+            retrieved_latest_row = ch_datastores[metric].get_latest_row({k:key_last_row[k] for k in metric.Meta.key_columns})
+            assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)
 
-def test_clickhouse_datastore_get_row_by_timestamp(setup_and_teardown_clickhouse_datastore):
-    ch_datastores,test_name = setup_and_teardown_clickhouse_datastore
-    expected_dataframes = {metric:get_metric_from_csv(metric,TEST_DATAFRAME_PATH[metric]) for metric in TEST_METRICS}
-    for metric in TEST_METRICS:
-        insert_data(ch_datastores[metric],metric,test_name)
-    for metric in TEST_METRICS:
-        if len(metric.Meta.key_columns) <= 1:
-            continue
-        expected_last_row = expected_dataframes[metric].iloc[-1]
-        # remove 1 last key column
-        key_last_row = expected_last_row[metric.Meta.key_columns]
-        key_columns = metric.Meta.key_columns.copy()
-        key_columns.pop()
-        
-        retrieved_latest_row = ch_datastores[metric].get_row_by_timestamp({k:key_last_row[k] for k in key_columns},expected_last_row['timestamp_utc'],'timestamp_utc')
-        retrieved_latest_row = convert_date_column(retrieved_latest_row,metric)
+    @staticmethod
+    def test_clickhouse_datastore_get_row_by_timestamp(setup_and_teardown_clickhouse_datastore):
+        ch_datastores,test_name = setup_and_teardown_clickhouse_datastore
+        expected_dataframes = {metric:get_metric_from_csv(metric,TEST_DATAFRAME_PATH[metric]) for metric in TEST_METRICS}
+        for metric in TEST_METRICS:
+            insert_data(ch_datastores[metric],metric,test_name)
+        for metric in TEST_METRICS:
+            if len(metric.Meta.key_columns) <= 1:
+                continue
+            expected_last_row = expected_dataframes[metric].iloc[-1]
+            # remove 1 last key column
+            key_last_row = expected_last_row[metric.Meta.key_columns]
+            key_columns = metric.Meta.key_columns.copy()
+            key_columns.pop()
+            
+            retrieved_latest_row = ch_datastores[metric].get_row_by_timestamp({k:key_last_row[k] for k in key_columns},expected_last_row['timestamp_utc'],'timestamp_utc')
+            assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)
+
+    @staticmethod        
+    def test_clickhouse_datastore_get_row_by_timestamp_2(setup_and_teardown_clickhouse_datastore):
+        ch_datastores,test_name = setup_and_teardown_clickhouse_datastore
+        expected_dataframe = get_metric_from_csv(MT5DealDaily,TEST_DATAFRAME_PATH[MT5DealDaily])
+        insert_data(ch_datastores[MT5DealDaily],MT5DealDaily,test_name)
+        expected_last_row = expected_dataframe.iloc[-1]
+        retrieved_latest_row = ch_datastores[MT5DealDaily].get_row_by_timestamp({'Login':expected_last_row['Login']},expected_last_row['Date'],'Date')
         assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)
         
-def test_clickhouse_datastore_get_row_by_timestamp_2(setup_and_teardown_clickhouse_datastore):
-    ch_datastores,test_name = setup_and_teardown_clickhouse_datastore
-    expected_dataframe = get_metric_from_csv(MT5DealDaily,TEST_DATAFRAME_PATH[MT5DealDaily])
-    insert_data(ch_datastores[MT5DealDaily],MT5DealDaily,test_name)
-    expected_last_row = expected_dataframe.iloc[-1]
-    retrieved_latest_row = ch_datastores[MT5DealDaily].get_row_by_timestamp({'Login':expected_last_row['Login']},expected_last_row['Date'],'Date')
-    retrieved_latest_row = convert_date_column(retrieved_latest_row,MT5DealDaily)
-    assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)
+        retrieved_latest_row = ch_datastores[MT5DealDaily].get_row_by_timestamp({'Login':expected_last_row['Login']},datetime.date(1960,1,1),'Date')
+        assert_series_equal(retrieved_latest_row,pd.Series(MT5DealDaily(**{'Login':expected_last_row['Login']}).model_dump()),check_index=False, check_names= False)
+
+    @staticmethod
+    def test_clickhouse_datastore_put(setup_and_teardown_clickhouse_datastore):
+        ch_datastores,_ = setup_and_teardown_clickhouse_datastore
+        expected_dataframes = {metric:get_metric_from_csv(metric,TEST_DATAFRAME_PATH[metric]) for metric in TEST_METRICS}
+
+        for metric in TEST_METRICS:
+            ch_datastores[metric].put(expected_dataframes[metric])
+            expected_last_row = expected_dataframes[metric].iloc[-1]
+            key_last_row = expected_last_row[metric.Meta.key_columns]
+            retrieved_latest_row = ch_datastores[metric].get_latest_row({k:key_last_row[k] for k in metric.Meta.key_columns})
+            assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)
+
+class LocalDatastore:
+    @staticmethod
+    def test_local_datastore_put(setup_and_teardown_local_datastore):
+        local_datastores,_ = setup_and_teardown_local_datastore
+        expected_dataframes = {metric:get_metric_from_csv(metric,TEST_DATAFRAME_PATH[metric]) for metric in TEST_METRICS}
+        for metric in TEST_METRICS:
+            insert_data_to_local_datastore(local_datastores[metric],expected_dataframes[metric])
+            expected_last_row = expected_dataframes[metric].iloc[-1]
+            key_last_row = expected_last_row[metric.Meta.key_columns]
+            retrieved_latest_row = local_datastores[metric].get_latest_row({k:key_last_row[k] for k in metric.Meta.key_columns})
+            assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)   
     
-    retrieved_latest_row = ch_datastores[MT5DealDaily].get_row_by_timestamp({'Login':expected_last_row['Login']},datetime.date(1960,1,1),'Date')
-    assert_series_equal(retrieved_latest_row,pd.Series(MT5DealDaily(**{'Login':expected_last_row['Login']}).model_dump()),check_index=False, check_names= False)
-
-def test_clickhouse_datastore_put(setup_and_teardown_clickhouse_datastore):
-    ch_datastores,_ = setup_and_teardown_clickhouse_datastore
-    expected_dataframes = {metric:get_metric_from_csv(metric,TEST_DATAFRAME_PATH[metric]) for metric in TEST_METRICS}
-
-    for metric in TEST_METRICS:
-        ch_datastores[metric].put(expected_dataframes[metric])
-        expected_last_row = expected_dataframes[metric].iloc[-1]
-        key_last_row = expected_last_row[metric.Meta.key_columns]
-        retrieved_latest_row = ch_datastores[metric].get_latest_row({k:key_last_row[k] for k in metric.Meta.key_columns})
-        retrieved_latest_row = convert_date_column(retrieved_latest_row,metric)
-        assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)

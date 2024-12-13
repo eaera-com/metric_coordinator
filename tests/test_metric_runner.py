@@ -83,7 +83,6 @@ def test_metric_runner_process_metrics(setup_teardown_metric_runner_after_test):
     
     df_deal = get_metric_from_csv(MT5Deal,TEST_DATAFRAME_PATH[MT5Deal])
     results = metric_runner.process_metrics(df_deal)
-    
     calculated_df = setup_string_column_type(results[AccountMetricDaily],AccountMetricDaily)
     
     # Load the expected data from CSV
@@ -92,7 +91,8 @@ def test_metric_runner_process_metrics(setup_teardown_metric_runner_after_test):
     # Adopt type and adjust expected different columns
     expected_df['date'] = pd.to_datetime(expected_df['date']).dt.date
     expected_df.rename(columns={"timestamp":"timestamp_utc"},inplace=True)
-    
+
+    assert len(expected_df) == len(calculated_df)
     # Ensure both dataframes have the same columns
     assert set(calculated_df.columns) == set(expected_df.columns), f"Columns do not match {calculated_df.columns} != {expected_df.columns}"
     # Verify data types of each column

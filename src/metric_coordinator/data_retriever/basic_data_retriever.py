@@ -33,7 +33,8 @@ class BasicDataRetriever(DataRetriever,abc.ABC):
             input_data = self.retrieve_data(from_time,to_time,self.filters)
             if not input_data['Deal'].empty:
                 number_data_received = {k: v.shape[0] for k,v in input_data.items()}
-                print(f"Retrieved {number_data_received} deals from: {self.retriever}, with filters: {self.filters}, from time: {from_time}, to time: {to_time}")
+                print(f"Retrieved {number_data_received} deals from: {self.retriever}, with filters: {self.filters},"
+                      f" from time: {from_time}, to time: {to_time}")
             
             results = metric_runner.process_metrics(input_data)
             metric_runner.emit_metrics(results)

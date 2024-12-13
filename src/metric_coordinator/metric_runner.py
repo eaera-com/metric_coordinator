@@ -4,8 +4,9 @@ import warnings
 from typing import List, Type, Dict
 
 from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
-from account_metrics import METRIC_CALCULATORS
+from account_metrics import METRIC_CALCULATORS, MT5Deal, MT5DealDaily
 from metric_coordinator.datastore.clickhouse_datastore import ClickhouseDatastore
+from metric_coordinator.datastore.local_datastore import LocalDatastore
 from metric_coordinator.model import DataEmiter, Datastore, MetricData, MetricRunnerAPI
 from metric_coordinator.configs import Settings
 
