@@ -18,8 +18,6 @@ python = "^3.12"
 pydantic-settings = "^2.2.1"
 pytest = "^8.0.2"
 pytest-coverage = "^0.0"
-pytest-asyncio = "^0.23.5.post1"
-pytest-xdist = "^3.5.0"
 pre-commit = "^3.7.0"
 icecream = "^2.1.3"
 
@@ -116,8 +114,6 @@ addopts = '''
     --cov-report=xml:coverage/cov.xml
     --no-cov-on-fail
     --cov-fail-under=63
-    --numprocesses=auto
-    --asyncio-mode=auto
 '''
 
 [tool.pylint.messages_control]

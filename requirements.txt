@@ -3,8 +3,6 @@ git+https://github.com/eaera-com/account_metrics.git#egg=account_metrics # accou
 
 pytest
 pytest-cov
-pytest-xdist
-pytest-asyncio
 pydantic
 pandas
 clickhouse-connect
