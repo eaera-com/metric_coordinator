@@ -1,24 +1,20 @@
 
 import datetime
 from typing import Dict, Type, Union, Any,List
-from account_metrics import MT5Deal, MT5DealDaily
 import pandas as pd
-from pydantic.alias_generators import to_snake
+import numpy as np
 
 from metric_coordinator.model import Datastore, MetricData
 
 class LocalDatastore(Datastore):
     NONE_CLUSTER_KEY_VALUE = "ALL"
     MINIMUM_VALUE_PUT_IN_BATCH = 1000
+    BATCH_PROCESSING = False
     def __init__(self, metric:MetricData, cluster_columns:tuple[str] = None, batch_size:int = 64) -> None:        
         self.metric = metric
         self.cluster_columns = sorted(cluster_columns) if cluster_columns else None
         self._batch_size = batch_size
         self.cluster_values_to_dataframe = {}
-           
-    def get_metric_name(self) -> str:       
-        metric_name = to_snake(self.metric.__name__) if not self.table_name else self.table_name
-        return metric_name
     
     def get_metric(self) -> Type[MetricData]:
         return self.metric
@@ -36,20 +32,39 @@ class LocalDatastore(Datastore):
             return pd.Series(self.metric(**keys).model_dump())
         return result_df.iloc[-1]
     
-    def get_row_by_timestamp(self,keys:Dict[str,int],timestamp:datetime.date,timestamp_column:str,use_default_value:bool = True) -> pd.Series:
+    def get_row_by_timestamp(self,keys:Dict[str,Any],timestamp:datetime.date,timestamp_column:str,use_default_value:bool = False) -> pd.Series:
         if self.metric is None:
             raise ValueError("Datastore is not initialized or deactivated")
         result_df = self.cluster_values_to_dataframe.get(self.get_cluster_value_tuple(keys),None)
-        result_df = result_df[result_df[timestamp_column] == timestamp]
-        if result_df.empty:
+        
+        #TODO: make this cleaner
+        if timestamp_column not in keys:
+            keys[timestamp_column] = timestamp
+        else:
+            assert keys[timestamp_column] == timestamp, f"Timestamp {keys[timestamp_column]} != {timestamp}"
+        
+        # TODO: optimize for subset of keys extraction
+        final_result_df = self.subset_df(result_df,keys)
+            
+        if final_result_df.empty:
             if use_default_value:   
                 return pd.Series(self.metric(**keys).model_dump())
             else:
                 return None
-        return result_df.iloc[-1]
+        return final_result_df.iloc[-1]
+
+    def subset_df(self,df: pd.DataFrame, filters: dict) -> pd.DataFrame:
+        mask = pd.Series(True, index=df.index)
+        for col, val in filters.items():
+            mask &= (df[col] == val)
+        return df[mask]    
     
-    def reload_data(self) -> None:
-        raise NotImplementedError("Not implemented")
+    def _get_df_filtered(self,df:pd.DataFrame,keys:Dict[str,int]) -> pd.DataFrame:
+        mask = np.ones(len(df), dtype=bool)  # Start with an all-True NumPy array
+        for col, val in keys.items():
+            # Compare directly using df[col].values to avoid Pandas overhead
+            mask &= (df[col].values == val)
+        return df[mask]
     
     def reload_data(self, df:pd.DataFrame) -> None:
         self.clean_data()
@@ -60,7 +75,7 @@ class LocalDatastore(Datastore):
             raise ValueError("Datastore is not initialized or deactivated")
         if isinstance(value, pd.Series):
             value = value.to_frame()
-        if value.shape[0] >= self.MINIMUM_VALUE_PUT_IN_BATCH:
+        if value.shape[0] >= self.MINIMUM_VALUE_PUT_IN_BATCH and self.BATCH_PROCESSING:
             self._put_in_batch(value)
         else:
             for _,row in value.iterrows():

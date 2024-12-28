@@ -80,7 +80,7 @@ def test_metric_runner_process_metrics(setup_teardown_metric_runner_after_test):
         metric_runner.register_metric(metric)
     
     # Insert data to datastore MT5DealDaily
-    insert_data(metric_runner.get_datastore(MT5DealDaily),MT5DealDaily,test_name)
+    insert_data(metric_runner.get_datastore(MT5DealDaily).get_source_datastore(),MT5DealDaily,test_name)
     
     df_deal = get_metric_from_csv(MT5Deal,TEST_DATAFRAME_PATH[MT5Deal])
     results = metric_runner.process_metrics(df_deal)
@@ -104,35 +104,34 @@ def test_metric_runner_process_metrics(setup_teardown_metric_runner_after_test):
     pd.testing.assert_frame_equal(calculated_df[expected_df.columns],expected_df,check_dtype=True)
     
     
-
-def test_metric_runner_process_metrics_performance(setup_teardown_metric_runner_after_test):
-    metric_runner,test_name = setup_teardown_metric_runner_after_test
-    metric_runner.setup_clickhouse_client()
-    metric_runner.setup_datasore_metric_table_names(
-                                {
-                                    MT5Deal:get_test_metric_name(MT5Deal,test_name),
-                                    MT5DealDaily:get_test_metric_name(MT5DealDaily,test_name),
-                                    AccountMetricDaily:get_test_metric_name(AccountMetricDaily,test_name),
-                                    AccountMetricByDeal:get_test_metric_name(AccountMetricByDeal,test_name),
-                                    AccountSymbolMetricByDeal:get_test_metric_name(AccountSymbolMetricByDeal,test_name),
-                                    PositionMetricByDeal:get_test_metric_name(PositionMetricByDeal,test_name)
-                                })
+# TODO: add deal_daily (history) 
+# def test_metric_runner_process_metrics_performance(setup_teardown_metric_runner_after_test):
+#     metric_runner,test_name = setup_teardown_metric_runner_after_test
+#     metric_runner.setup_clickhouse_client()
+#     metric_runner.setup_datasore_metric_table_names(
+#                                 {
+#                                     MT5Deal:get_test_metric_name(MT5Deal,test_name),
+#                                     MT5DealDaily:get_test_metric_name(MT5DealDaily,test_name),
+#                                     AccountMetricDaily:get_test_metric_name(AccountMetricDaily,test_name),
+#                                     AccountMetricByDeal:get_test_metric_name(AccountMetricByDeal,test_name),
+#                                     AccountSymbolMetricByDeal:get_test_metric_name(AccountSymbolMetricByDeal,test_name),
+#                                     PositionMetricByDeal:get_test_metric_name(PositionMetricByDeal,test_name)
+#                                 })
  
-    for metric in TEST_METRICS:
-        if metric in [MT5Deal, MT5DealDaily]:
-            continue
-        metric_runner.register_metric(metric)
+#     for metric in TEST_METRICS:
+#         if metric in [MT5Deal, MT5DealDaily]:
+#             continue
+#         metric_runner.register_metric(metric)
     
-    # Insert data to datastore MT5DealDaily
-    insert_data(metric_runner.get_datastore(MT5DealDaily),MT5DealDaily,test_name)
+#     # Insert data to datastore MT5DealDaily
+#     insert_data(metric_runner.get_datastore(MT5DealDaily).get_source_datastore(),MT5DealDaily,test_name)
 
-    df_deal = get_metric_from_csv(MT5Deal, 'tests/test_data/perf_test/auda_deals_truncated.csv')
-    start_time = time.time()
+#     df_deal = get_metric_from_csv(MT5Deal, 'tests/test_data/perf_test/auda_deals_truncated.csv')
+#     start_time = time.time()
 
-    results = metric_runner.process_metrics(df_deal)
-    end_time = time.time()
+#     _  = metric_runner.process_metrics(df_deal)
+#     end_time = time.time()
     
-    elapsed_time = end_time - start_time
+#     elapsed_time = end_time - start_time
     
-    print("Elapsed time:", elapsed_time)
-    assert 1 == 2 # just so that it fails and displays captured stdout
+#     print("Process metrics 100 rows elapsed time:", elapsed_time)

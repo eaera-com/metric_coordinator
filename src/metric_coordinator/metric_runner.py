@@ -4,9 +4,9 @@ import warnings
 from typing import List, Type, Dict
 
 from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
-from account_metrics import METRIC_CALCULATORS, MT5Deal, MT5DealDaily
+from account_metrics import METRIC_CALCULATORS
 from metric_coordinator.datastore.clickhouse_datastore import ClickhouseDatastore
-from metric_coordinator.datastore.local_datastore import LocalDatastore
+from metric_coordinator.datastore.cache_datastore import CacheDatastore
 from metric_coordinator.model import DataEmiter, Datastore, MetricData, MetricRunnerAPI
 from metric_coordinator.configs import Settings
 
@@ -30,14 +30,14 @@ class MetricRunner(MetricRunnerAPI):
         self.setup_datastore_metric_table_names()
     
     def update_metric(self, metric: Type[MetricData], result: pd.DataFrame) -> None:
-            self.get_datastore(metric).put(result)
+        self.get_datastore(metric).put(result)
 
     def process_metrics(self,input_data:pd.DataFrame) -> Dict[Type[MetricData],pd.DataFrame]:  
         results = {}
         for metric in self._metrics:
             calculator = METRIC_CALCULATORS[metric]
             results[metric]  = calculator.calculate(input_data)
-            print(f"Calculated metric: {metric} with {results[metric].shape[0]} rows")
+       
         self.update_metric(metric, results[metric])
         return results
 
@@ -59,10 +59,11 @@ class MetricRunner(MetricRunnerAPI):
                                           database=self.settings.CLICKHOUSE_DATABASE)
     
     def setup_datastore(self, metric_class: Type[MetricData]) -> Datastore:
+        #TODO: move the setup to config instead of hardcoded
         if not self.clickhouse_client:
             raise ValueError("Clickhouse client not initialized before setting up clickhouse datastore")
         table_name = None if self.datastore_metric_table_names is None or metric_class not in self.datastore_metric_table_names else self.datastore_metric_table_names.get(metric_class)
-        return ClickhouseDatastore(metric_class,self.clickhouse_client,table_name=table_name)
+        return CacheDatastore(metric_class,ClickhouseDatastore(metric_class,self.clickhouse_client,table_name=table_name))
     
     def setup_datasore_metric_table_names(self, metric_table_names:Dict[Type[MetricData],str]) -> None:
         self.datastore_metric_table_names = metric_table_names

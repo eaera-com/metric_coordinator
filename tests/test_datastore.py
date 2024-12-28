@@ -71,6 +71,8 @@ class TestClickhouseDatastore:
             expected_last_row = expected_dataframes[metric].iloc[-1]
             key_last_row = expected_last_row[metric.Meta.key_columns]
             retrieved_latest_row = ch_datastores[metric].get_latest_row({k:key_last_row[k] for k in metric.Meta.key_columns})
+            # Convert date column to datetime.date type to correct format
+            retrieved_latest_row = convert_date_column(retrieved_latest_row,metric)
             assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)
 
     @staticmethod
@@ -89,6 +91,8 @@ class TestClickhouseDatastore:
             key_columns.pop()
             
             retrieved_latest_row = ch_datastores[metric].get_row_by_timestamp({k:key_last_row[k] for k in key_columns},expected_last_row['timestamp_utc'],'timestamp_utc')
+            # Convert date column to datetime.date type to correct format
+            retrieved_latest_row = convert_date_column(retrieved_latest_row,metric)
             assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)
 
     @staticmethod        
@@ -98,10 +102,13 @@ class TestClickhouseDatastore:
         insert_data(ch_datastores[MT5DealDaily],MT5DealDaily,test_name)
         expected_last_row = expected_dataframe.iloc[-1]
         retrieved_latest_row = ch_datastores[MT5DealDaily].get_row_by_timestamp({'Login':expected_last_row['Login']},expected_last_row['Date'],'Date')
+        # Convert date column to datetime.date type to correct format
+        retrieved_latest_row = convert_date_column(retrieved_latest_row,MT5DealDaily)
         assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)
         
+        # Return None if not found
         retrieved_latest_row = ch_datastores[MT5DealDaily].get_row_by_timestamp({'Login':expected_last_row['Login']},datetime.date(1960,1,1),'Date')
-        assert_series_equal(retrieved_latest_row,pd.Series(MT5DealDaily(**{'Login':expected_last_row['Login']}).model_dump()),check_index=False, check_names= False)
+        assert retrieved_latest_row is None
 
     @staticmethod
     def test_clickhouse_datastore_put(setup_and_teardown_clickhouse_datastore):
@@ -113,9 +120,11 @@ class TestClickhouseDatastore:
             expected_last_row = expected_dataframes[metric].iloc[-1]
             key_last_row = expected_last_row[metric.Meta.key_columns]
             retrieved_latest_row = ch_datastores[metric].get_latest_row({k:key_last_row[k] for k in metric.Meta.key_columns})
+            # Convert date column to datetime.date type to correct format
+            retrieved_latest_row = convert_date_column(retrieved_latest_row,metric)
             assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)
 
-class LocalDatastore:
+class TestLocalDatastore:
     @staticmethod
     def test_local_datastore_put(setup_and_teardown_local_datastore):
         local_datastores,_ = setup_and_teardown_local_datastore
@@ -126,4 +135,11 @@ class LocalDatastore:
             key_last_row = expected_last_row[metric.Meta.key_columns]
             retrieved_latest_row = local_datastores[metric].get_latest_row({k:key_last_row[k] for k in metric.Meta.key_columns})
             assert_series_equal(retrieved_latest_row,expected_last_row,check_index=False, check_names= False)   
+            
+    # TODO: add more test cases (with cluster columns = logins also)
+            
+class TestCacheDatastore:
+    @staticmethod
+    def test_cache_datastore_get_row_by_timestamp():
+        pass
     
