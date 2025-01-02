@@ -23,7 +23,7 @@ from tests.conftest import (
 
 
 @pytest.fixture
-def set_up_tear_down_metric_runner(request):
+def setup_teardown_metric_runner(request):
     test_name = request.node.name
     metric_runner = MetricRunner(get_test_settings(), MT5Deal)
     setup_clickhouse_datastore_table(test_name)
@@ -51,8 +51,8 @@ def setup_clickhouse_datastore_table(test_name: str):
             raise ValueError(f"Failed to create metric {join_metric_name_test_name(metric,test_name)}")
 
 
-def test_metric_runner_initialization(set_up_tear_down_metric_runner):
-    metric_runner, _ = set_up_tear_down_metric_runner
+def test_metric_runner_initialization(setup_teardown_metric_runner):
+    metric_runner, _ = setup_teardown_metric_runner
     assert metric_runner.settings == get_test_settings()
     assert metric_runner._metrics == []
     assert metric_runner._emiters == []
@@ -74,8 +74,8 @@ def test_metric_runner_initialization(set_up_tear_down_metric_runner):
     assert len(metric_runner.get_emitters()) == 2
 
 
-def test_metric_runner_process_metrics(set_up_tear_down_metric_runner):
-    metric_runner, test_name = set_up_tear_down_metric_runner
+def test_metric_runner_process_metrics(setup_teardown_metric_runner):
+    metric_runner, test_name = setup_teardown_metric_runner
     metric_runner.setup_clickhouse_client()
     metric_runner.setup_datasore_metric_table_names(
         {
