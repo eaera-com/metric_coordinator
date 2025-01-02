@@ -80,7 +80,7 @@ def test_metric_runner_process_metrics(setup_teardown_metric_runner_after_test):
         metric_runner.register_metric(metric)
     
     # Insert data to datastore MT5DealDaily
-    insert_data(metric_runner.get_datastore(MT5DealDaily).get_source_datastore(),MT5DealDaily,test_name)
+    insert_data(metric_runner.get_datastore(MT5DealDaily),MT5DealDaily,test_name)
     
     df_deal = get_metric_from_csv(MT5Deal,TEST_DATAFRAME_PATH[MT5Deal])
     results = metric_runner.process_metrics(df_deal)
