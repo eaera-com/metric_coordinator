@@ -38,8 +38,11 @@ def get_test_settings():
 def get_test_metric_name(metric:MetricData,test_name:str):
     return f"{test_name}_{to_snake(metric.__name__)}"
 
-def insert_data(ch:Union[ClickhouseDatastore,ClickhouseDataRetriever],metric:MetricData,test_name:str):
-    df = get_metric_from_csv(metric,TEST_DATAFRAME_PATH[metric])
+def insert_data(ch:Union[ClickhouseDatastore,ClickhouseDataRetriever],metric:MetricData,test_name:str,path:str=None):
+    if path is None:
+        df = get_metric_from_csv(metric,TEST_DATAFRAME_PATH[metric])
+    else:
+        df = get_metric_from_csv(metric,path)
     result = ch.client.insert_df(get_test_metric_name(metric,test_name),df)
     assert result is True
 
