@@ -19,9 +19,8 @@ class Settings(BaseSettings):
     MT_GROUPS: str = "demo\\duc_dev\\account_metrics"
     MT_LOGIN: int = "1009"
     MT_PASSWORD: str = "Tung@0012"
-    
-    SERVER_NAME: str = "demo"
 
+    SERVER_NAME: str = "demo"
 
     model_config = SettingsConfigDict(
         env_file=".env",

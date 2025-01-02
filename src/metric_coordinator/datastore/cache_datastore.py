@@ -29,14 +29,12 @@ class CacheDatastore(Datastore):
     def get_row_by_timestamp(self, shard_key: Dict[str, int], timestamp: datetime.date, timestamp_column: str) -> pd.Series:
         if self._need_reload(timestamp):
             self._eager_load()
-        result = self._get_row_by_timestamp_from_local(
-            shard_key, timestamp, timestamp_column)
+        result = self._get_row_by_timestamp_from_local(shard_key, timestamp, timestamp_column)
 
         if result is None:
             # TODO: logging local cache miss
             # print("Warning: No data found in local cache, loading from clickhouse")
-            result = self.source_datastore.get_row_by_timestamp(
-                shard_key, timestamp, timestamp_column)
+            result = self.source_datastore.get_row_by_timestamp(shard_key, timestamp, timestamp_column)
             if result is not None:
                 # TODO: Fix potential wrong order bugs
                 self.cache.put(result)
@@ -69,13 +67,13 @@ class CacheDatastore(Datastore):
         # TODO: migrate all query to clickhouse datastore
         # TODO: check if we want to parallelize this
         if self.sharding_columns is None:
-            df = self.source_datastore.client.query_df(
-                f"SELECT * FROM {self.source_datastore.get_metric_table_name()} FINAL")
+            df = self.source_datastore.client.query_df(f"SELECT * FROM {self.source_datastore.get_metric_table_name()} FINAL")
         else:
             assert len(shard_key_values) == len(self.sharding_columns)
             # TODO: validate that shard_key_values is in the correct type
             df = self.source_datastore.client.query_df(
-                f"SELECT * FROM {self.source_datastore.get_metric_table_name()} FINAL {self._generate_sharding_clause(shard_key_values)}")
+                f"SELECT * FROM {self.source_datastore.get_metric_table_name()} FINAL {self._generate_sharding_clause(shard_key_values)}"
+            )
         self.cache.reload_data(df)
         self._last_load_time = datetime.datetime.now()
         return df

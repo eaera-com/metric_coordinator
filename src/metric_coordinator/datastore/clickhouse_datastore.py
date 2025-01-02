@@ -23,8 +23,10 @@ class ClickhouseDatastore(Datastore):
     def _validate_sharding_columns(self, sharding_columns: tuple[str]) -> None:
         for column in sharding_columns:
             if column not in self.client.get_table_columns(self.get_metric_table_name()) or column not in self.metric.model_fields:
-                raise ValueError(f"Column {column} not found in table {
-                                 self.get_metric_table_name()}")
+                raise ValueError(
+                    f"Column {column} not found in table {
+                                 self.get_metric_table_name()}"
+                )
 
     def _generate_sharding_clause(self, shard_key_values: tuple[Any]) -> str:
         return f"WHERE {self.get_metric_fields(dict(zip(self.sharding_columns, shard_key_values)))}" if self.sharding_columns else ""
@@ -35,8 +37,7 @@ class ClickhouseDatastore(Datastore):
         return tuple(shard_key[col] for col in self.sharding_columns)
 
     def get_metric_table_name(self) -> str:
-        metric_name = to_snake(
-            self.metric.__name__) if not self.table_name else self.table_name
+        metric_name = to_snake(self.metric.__name__) if not self.table_name else self.table_name
         return metric_name
 
     def get_metric(self) -> Type[MetricData]:
@@ -69,7 +70,9 @@ class ClickhouseDatastore(Datastore):
             return None
         return result.iloc[0]
 
-    def get_row_by_timestamp(self, shard_key: Dict[str, int], timestamp: Union[datetime.date, datetime.datetime], timestamp_column: str) -> pd.Series:
+    def get_row_by_timestamp(
+        self, shard_key: Dict[str, int], timestamp: Union[datetime.date, datetime.datetime], timestamp_column: str
+    ) -> pd.Series:
         if self.metric is None:
             raise ValueError("Datastore is not initialized or deactivated")
         query = f"""

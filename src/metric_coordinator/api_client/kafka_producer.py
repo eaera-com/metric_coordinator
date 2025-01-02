@@ -4,6 +4,8 @@ import pandas as pd
 
 from account_metrics.configs import settings
 from account_metrics.model import DataEmiter, MetricData
+
+
 class KafkaProducer(DataEmiter):
     # Seperate kafka api and KafkaEmit
     def __init__(self) -> None:
@@ -21,11 +23,11 @@ class KafkaProducer(DataEmiter):
         )
         self.prefix = settings.KAFKA_TOPIC_PREFIX
         print("Kafka producer setup complete")
-    
+
     def flush(self) -> None:
-        self.kafka_producer.client.flush()  
-    
-    def emit(self, data: Dict[MetricData,pd.DataFrame]) -> None:
+        self.kafka_producer.client.flush()
+
+    def emit(self, data: Dict[MetricData, pd.DataFrame]) -> None:
         for metric in data.keys():
             topic = f"{self.prefix}{metric.__name__}"
             for _, row in data[metric].iterrows():

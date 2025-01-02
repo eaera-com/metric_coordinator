@@ -1,5 +1,5 @@
-class MT5ManagerClient():
-    def __init__(self,server,login:str, password:str) -> None:
+class MT5ManagerClient:
+    def __init__(self, server, login: str, password: str) -> None:
         import MT5Manager
 
         self.manager = MT5Manager.ManagerAPI()

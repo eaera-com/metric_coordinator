@@ -101,10 +101,7 @@ class DataRetriever(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def retrieve_data(
-        self,
-        to_time: Annotated[int, "timestamp time-utc"]
-    ) -> Dict[str, pd.DataFrame]:
+    def retrieve_data(self, to_time: Annotated[int, "timestamp time-utc"]) -> Dict[str, pd.DataFrame]:
         raise NotImplementedError()
 
     @abc.abstractmethod
