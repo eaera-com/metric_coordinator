@@ -12,21 +12,34 @@ from metric_coordinator.model import MetricData
 
 from account_metrics import AccountMetricDaily, AccountMetricByDeal, AccountSymbolMetricByDeal, PositionMetricByDeal, MT5Deal, MT5DealDaily
 
-TEST_METRICS = [AccountMetricDaily, AccountMetricByDeal, AccountSymbolMetricByDeal, PositionMetricByDeal, MT5Deal, MT5DealDaily]
-# TODO: find a better way to get the path.
-TEST_DATAFRAME_PATH = {
-    MT5Deal: os.path.abspath("tests/test_data/mt5_deal.csv"),
-    MT5DealDaily: os.path.abspath("tests/test_data/mt5_deal_daily.csv"),
-    AccountMetricDaily: os.path.abspath("tests/test_data/account_metric_daily.csv"),
-    AccountMetricByDeal: os.path.abspath("tests/test_data/account_metric_by_deal.csv"),
-    AccountSymbolMetricByDeal: os.path.abspath("tests/test_data/account_symbol_metric_by_deal.csv"),
-    PositionMetricByDeal: os.path.abspath("tests/test_data/position_metric_by_deal.csv"),
-}
+METRICS = [AccountMetricDaily, AccountMetricByDeal, AccountSymbolMetricByDeal, PositionMetricByDeal, MT5Deal, MT5DealDaily]
 
 
-@pytest.fixture
-def get_test_name(request):
-    return request.node.name
+def load_csv(metric: MetricData) -> pd.DataFrame:
+    def get_type_mapping(metric: MetricData) -> Dict[str, str]:
+        type_mapping = {}
+        for field_name, field in metric.model_fields.items():
+            if field.annotation in [int, "int32", "int64"]:
+                type_mapping[field_name] = "int64"  # Use nullable integer type
+            elif field.annotation == float:
+                type_mapping[field_name] = "float64"
+            elif field.annotation in [str, "string"]:
+                type_mapping[field_name] = "string"
+            else:
+                type_mapping[field_name] = "object"
+        return type_mapping
+
+    csv_path = os.path.abspath(f"tests/test_data/{to_snake(metric.__name__)}.csv")
+    date_columns = [field_name for field_name, field in metric.model_fields.items() if field.annotation == datetime.date]
+    df = pd.read_csv(csv_path, dtype=get_type_mapping(metric), parse_dates=date_columns)
+
+    # Convert string columns with NA values to empty strings
+    string_columns = df.select_dtypes(include=["string"]).columns
+    df[string_columns] = df[string_columns].fillna("")
+
+    df = setup_date_column_type(df, metric)
+    df = df[metric.model_fields.keys()]  # Reorder columns to match the metric model fields
+    return df
 
 
 def get_test_settings():
@@ -41,42 +54,19 @@ def get_test_settings():
     )
 
 
-def get_test_metric_name(metric: MetricData, test_name: str):
+@pytest.fixture
+def get_test_name(request):
+    return request.node.name
+
+
+def join_metric_name_test_name(metric: MetricData, test_name: str):
     return f"{test_name}_{to_snake(metric.__name__)}"
 
 
-def insert_data(ch: Union[ClickhouseDatastore, ClickhouseDataRetriever], metric: MetricData, test_name: str, path: str = None):
-    if path is None:
-        df = get_metric_from_csv(metric, TEST_DATAFRAME_PATH[metric])
-    else:
-        df = get_metric_from_csv(metric, path)
-    result = ch.client.insert_df(get_test_metric_name(metric, test_name), df)
-    assert result is True
-
-
-def get_metric_from_csv(metric: MetricData, path: str):
-    date_columns = [field_name for field_name, field in metric.model_fields.items() if field.annotation == datetime.date]
-    df = pd.read_csv(path, dtype=extract_type_mapping(metric), parse_dates=date_columns)
-    # Convert string columns with NA values to empty strings
-    string_columns = df.select_dtypes(include=["string"]).columns
-    df[string_columns] = df[string_columns].fillna("")
-    df = setup_date_column_type(df, metric)
-    df = df[metric.model_fields.keys()]  # reorder columns
-    return df
-
-
-def extract_type_mapping(metric: MetricData):
-    type_mapping = {}
-    for field_name, field in metric.model_fields.items():
-        if field.annotation in [int, "int32", "int64"]:
-            type_mapping[field_name] = "int64"  # Use nullable integer type
-        elif field.annotation == float:
-            type_mapping[field_name] = "float64"
-        elif field.annotation in [str, "string"]:
-            type_mapping[field_name] = "string"
-        else:
-            type_mapping[field_name] = "object"
-    return type_mapping
+def insert_data_into_clickhouse(ch: Union[ClickhouseDatastore, ClickhouseDataRetriever], metric: MetricData, test_name: str):
+    df = load_csv(metric)
+    result = ch.client.insert_df(join_metric_name_test_name(metric, test_name), df)
+    assert result
 
 
 def setup_string_column_type(df: pd.DataFrame, metric: MetricData):

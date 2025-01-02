@@ -13,13 +13,11 @@ from metric_coordinator.model import Datastore
 from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 
 from tests.conftest import (
-    TEST_DATAFRAME_PATH,
-    TEST_METRICS,
-    extract_type_mapping,
-    get_metric_from_csv,
-    get_test_metric_name,
+    METRICS,
+    join_metric_name_test_name,
     get_test_settings,
-    insert_data,
+    insert_data_into_clickhouse,
+    load_csv,
     setup_string_column_type,
 )
 
@@ -30,14 +28,14 @@ def setup_teardown_metric_runner_after_test(request):
     metric_runner = MetricRunner(get_test_settings(), MT5Deal)
     setup_clickhouse_datastore_table(test_name)
     yield metric_runner, test_name
-    for emiter in metric_runner.get_emitters():
-        if isinstance(emiter, ClickhouseEmitter):
-            emiter.drop_metrics(metric_runner.get_metrics())
+    for emitter in metric_runner.get_emitters():
+        if isinstance(emitter, ClickhouseEmitter):
+            emitter.drop_metrics(metric_runner.get_metrics())
 
 
 def setup_clickhouse_datastore_table(test_name: str):
     settings = get_test_settings()
-    for metric in TEST_METRICS:
+    for metric in METRICS:
         metric_fields = ", ".join([f"{k} {type_map.get(v.annotation.__name__)}" for k, v in metric.model_fields.items()])
         keys = ", ".join([k for k, v in metric.model_fields.items() if "key" in v.metadata])
 
@@ -49,8 +47,8 @@ def setup_clickhouse_datastore_table(test_name: str):
             database=settings.CLICKHOUSE_DATABASE,
         )
 
-        if not client.create_metric_if_not_exist(get_test_metric_name(metric, test_name), metric_fields, keys):
-            raise ValueError(f"Failed to create metric {get_test_metric_name(metric,test_name)}")
+        if not client.create_metric_if_not_exist(join_metric_name_test_name(metric, test_name), metric_fields, keys):
+            raise ValueError(f"Failed to create metric {join_metric_name_test_name(metric,test_name)}")
 
 
 def test_metric_runner_initialization(setup_teardown_metric_runner_after_test):
@@ -62,7 +60,7 @@ def test_metric_runner_initialization(setup_teardown_metric_runner_after_test):
     metric_runner.setup_clickhouse_client()
     assert metric_runner.clickhouse_client is not None
 
-    for metric in TEST_METRICS:
+    for metric in METRICS:
         if metric in [MT5Deal, MT5DealDaily]:
             continue
         metric_runner.register_metric(metric)
@@ -81,29 +79,29 @@ def test_metric_runner_process_metrics(setup_teardown_metric_runner_after_test):
     metric_runner.setup_clickhouse_client()
     metric_runner.setup_datasore_metric_table_names(
         {
-            MT5Deal: get_test_metric_name(MT5Deal, test_name),
-            MT5DealDaily: get_test_metric_name(MT5DealDaily, test_name),
-            AccountMetricDaily: get_test_metric_name(AccountMetricDaily, test_name),
-            AccountMetricByDeal: get_test_metric_name(AccountMetricByDeal, test_name),
-            AccountSymbolMetricByDeal: get_test_metric_name(AccountSymbolMetricByDeal, test_name),
-            PositionMetricByDeal: get_test_metric_name(PositionMetricByDeal, test_name),
+            MT5Deal: join_metric_name_test_name(MT5Deal, test_name),
+            MT5DealDaily: join_metric_name_test_name(MT5DealDaily, test_name),
+            AccountMetricDaily: join_metric_name_test_name(AccountMetricDaily, test_name),
+            AccountMetricByDeal: join_metric_name_test_name(AccountMetricByDeal, test_name),
+            AccountSymbolMetricByDeal: join_metric_name_test_name(AccountSymbolMetricByDeal, test_name),
+            PositionMetricByDeal: join_metric_name_test_name(PositionMetricByDeal, test_name),
         }
     )
 
-    for metric in TEST_METRICS:
+    for metric in METRICS:
         if metric in [MT5Deal, MT5DealDaily]:
             continue
         metric_runner.register_metric(metric)
 
     # Insert data to datastore MT5DealDaily
-    insert_data(metric_runner.get_datastore(MT5DealDaily), MT5DealDaily, test_name)
+    insert_data_into_clickhouse(metric_runner.get_datastore(MT5DealDaily), MT5DealDaily, test_name)
 
-    df_deal = get_metric_from_csv(MT5Deal, TEST_DATAFRAME_PATH[MT5Deal])
+    df_deal = load_csv(MT5Deal)
     results = metric_runner.process_metrics(df_deal)
     calculated_df = setup_string_column_type(results[AccountMetricDaily], AccountMetricDaily)
 
     # Load the expected data from CSV
-    expected_df = pd.read_csv(TEST_DATAFRAME_PATH[AccountMetricDaily], dtype=extract_type_mapping(AccountMetricDaily))
+    expected_df = load_csv(AccountMetricDaily)
 
     # Adopt type and adjust expected different columns
     expected_df["date"] = pd.to_datetime(expected_df["date"]).dt.date
@@ -120,36 +118,3 @@ def test_metric_runner_process_metrics(setup_teardown_metric_runner_after_test):
 
     # Compare dataframes
     pd.testing.assert_frame_equal(calculated_df[expected_df.columns], expected_df, check_dtype=True)
-
-
-# TODO: add deal_daily (history)
-# def test_metric_runner_process_metrics_performance(setup_teardown_metric_runner_after_test):
-#     metric_runner,test_name = setup_teardown_metric_runner_after_test
-#     metric_runner.setup_clickhouse_client()
-#     metric_runner.setup_datasore_metric_table_names(
-#                                 {
-#                                     MT5Deal:get_test_metric_name(MT5Deal,test_name),
-#                                     MT5DealDaily:get_test_metric_name(MT5DealDaily,test_name),
-#                                     AccountMetricDaily:get_test_metric_name(AccountMetricDaily,test_name),
-#                                     AccountMetricByDeal:get_test_metric_name(AccountMetricByDeal,test_name),
-#                                     AccountSymbolMetricByDeal:get_test_metric_name(AccountSymbolMetricByDeal,test_name),
-#                                     PositionMetricByDeal:get_test_metric_name(PositionMetricByDeal,test_name)
-#                                 })
-
-#     for metric in TEST_METRICS:
-#         if metric in [MT5Deal, MT5DealDaily]:
-#             continue
-#         metric_runner.register_metric(metric)
-
-#     # Insert data to datastore MT5DealDaily
-#     insert_data(metric_runner.get_datastore(MT5DealDaily).get_source_datastore(),MT5DealDaily,test_name)
-
-#     df_deal = get_metric_from_csv(MT5Deal, 'tests/test_data/perf_test/auda_deals_truncated.csv')
-#     start_time = time.time()
-
-#     _  = metric_runner.process_metrics(df_deal)
-#     end_time = time.time()
-
-#     elapsed_time = end_time - start_time
-
-#     print("Process metrics 100 rows elapsed time:", elapsed_time)

@@ -6,7 +6,7 @@ from account_metrics import AccountMetricByDeal, AccountMetricDaily, AccountSymb
 
 from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 from metric_coordinator.data_emiter.clickhouse_data_emiter import ClickhouseEmitter
-from tests.conftest import TEST_METRICS, get_test_metric_name
+from tests.conftest import METRICS, join_metric_name_test_name
 from metric_coordinator.configs import settings
 
 
@@ -23,27 +23,27 @@ def setup_and_teardown_clickhouse_emitter(request):
         ),
         server=settings.SERVER_NAME,
         metric_table_names={
-            MT5Deal: get_test_metric_name(MT5Deal, test_name),
-            MT5DealDaily: get_test_metric_name(MT5DealDaily, test_name),
-            AccountMetricDaily: get_test_metric_name(AccountMetricDaily, test_name),
-            AccountMetricByDeal: get_test_metric_name(AccountMetricByDeal, test_name),
-            AccountSymbolMetricByDeal: get_test_metric_name(AccountSymbolMetricByDeal, test_name),
-            PositionMetricByDeal: get_test_metric_name(PositionMetricByDeal, test_name),
+            MT5Deal: join_metric_name_test_name(MT5Deal, test_name),
+            MT5DealDaily: join_metric_name_test_name(MT5DealDaily, test_name),
+            AccountMetricDaily: join_metric_name_test_name(AccountMetricDaily, test_name),
+            AccountMetricByDeal: join_metric_name_test_name(AccountMetricByDeal, test_name),
+            AccountSymbolMetricByDeal: join_metric_name_test_name(AccountSymbolMetricByDeal, test_name),
+            PositionMetricByDeal: join_metric_name_test_name(PositionMetricByDeal, test_name),
         },
     )
-    for metric in TEST_METRICS:
+    for metric in METRICS:
         ch.initialize_metric(metric)
 
     yield ch, test_name
 
-    for metric in TEST_METRICS:
+    for metric in METRICS:
         ch.drop_metric(metric)
 
 
 def test_clickhouse_data_emitter_initialize(setup_and_teardown_clickhouse_emitter):
     ch, test_name = setup_and_teardown_clickhouse_emitter
-    for metric in TEST_METRICS:
-        metric_name = get_test_metric_name(metric, test_name)
+    for metric in METRICS:
+        metric_name = join_metric_name_test_name(metric, test_name)
         assert len(ch.client.query_ddl(f"DESCRIBE TABLE {metric_name}").result_set) == len(metric.model_fields)
 
 
@@ -53,7 +53,7 @@ def test_clickhouse_data_emitter_emit(setup_and_teardown_clickhouse_emitter):
     first_timestamp = ch_emitter.get_last_emit_timestamp(MT5Deal)
 
     for metric in metrics:
-        metric_name = get_test_metric_name(metric, test_name)
+        metric_name = join_metric_name_test_name(metric, test_name)
         assert len(ch_emitter.client.query_ddl(f"DESCRIBE TABLE {metric_name}").result_set) == len(metric.model_fields)
         assert len(ch_emitter.client.query_ddl(f"SELECT * FROM {metric_name}").result_set) == 0
 
@@ -70,8 +70,8 @@ def test_clickhouse_data_emitter_emit(setup_and_teardown_clickhouse_emitter):
     # TODO: fix last emit timestamp
     # assert ch_emitter.get_last_emit_timestamp(MT5Deal) > first_timestamp
 
-    mt5deal_metric_name = get_test_metric_name(MT5Deal, test_name)
-    mt5dealdaily_metric_name = get_test_metric_name(MT5DealDaily, test_name)
+    mt5deal_metric_name = join_metric_name_test_name(MT5Deal, test_name)
+    mt5dealdaily_metric_name = join_metric_name_test_name(MT5DealDaily, test_name)
     assert ch_emitter.client.query_df(f"SELECT * FROM {mt5deal_metric_name}").shape[0] == df_deal.shape[0]
     assert ch_emitter.client.query_df(f"SELECT * FROM {mt5dealdaily_metric_name}").shape[0] == df_history.shape[0]
 
@@ -87,5 +87,5 @@ def test_clickhouse_data_emitter_emit_duplicate_key(setup_and_teardown_clickhous
     }
     ch.emit(data)
 
-    mt5deal_metric_name = get_test_metric_name(MT5Deal, test_name)
+    mt5deal_metric_name = join_metric_name_test_name(MT5Deal, test_name)
     assert ch.client.query_df(f"SELECT * FROM {mt5deal_metric_name}").shape[0] == 1
