@@ -16,7 +16,7 @@ METRICS = [AccountMetricDaily, AccountMetricByDeal, AccountSymbolMetricByDeal, P
 
 
 def load_csv(metric: MetricData) -> pd.DataFrame:
-    def get_type_mapping(metric: MetricData) -> Dict[str, str]:
+    def _get_type_mapping(metric: MetricData) -> Dict[str, str]:
         type_mapping = {}
         for field_name, field in metric.model_fields.items():
             if field.annotation in [int, "int32", "int64"]:
@@ -31,13 +31,13 @@ def load_csv(metric: MetricData) -> pd.DataFrame:
 
     csv_path = os.path.abspath(f"tests/test_data/{to_snake(metric.__name__)}.csv")
     date_columns = [field_name for field_name, field in metric.model_fields.items() if field.annotation == datetime.date]
-    df = pd.read_csv(csv_path, dtype=get_type_mapping(metric), parse_dates=date_columns)
+    df = pd.read_csv(csv_path, dtype=_get_type_mapping(metric), parse_dates=date_columns)
 
     # Convert string columns with NA values to empty strings
     string_columns = df.select_dtypes(include=["string"]).columns
     df[string_columns] = df[string_columns].fillna("")
 
-    df = setup_date_column_type(df, metric)
+    df = process_date_column(df, metric)
     df = df[metric.model_fields.keys()]  # Reorder columns to match the metric model fields
     return df
 
@@ -69,30 +69,18 @@ def insert_data_into_clickhouse(ch: Union[ClickhouseDatastore, ClickhouseDataRet
     assert result
 
 
-def setup_string_column_type(df: pd.DataFrame, metric: MetricData):
+def process_string_column(df: pd.DataFrame, metric: MetricData):
     for field_name, field in metric.model_fields.items():
         if field.annotation in [str, "string"]:
             df[field_name] = df[field_name].astype("string")
     return df
 
 
-def setup_date_column_type(df: pd.DataFrame, metric: MetricData):
+def process_date_column(df: pd.DataFrame, metric: MetricData):
     for field_name, field in metric.model_fields.items():
         if field.annotation == datetime.date:
             df[field_name] = pd.to_datetime(df[field_name]).dt.date
     return df
-
-
-def strip_quotes_from_string_columns(df: pd.DataFrame):
-    for col in df.select_dtypes(include=["object", "string"]).columns:
-        df[col] = df[col].apply(
-            lambda x: (
-                x[2:-1] if isinstance(x, str) and x.startswith("b'") and x.endswith("'") else x.strip("'") if isinstance(x, str) else x
-            )
-        )
-        df[col] = df[col].astype("string")
-    return df
-
 
 def retrieve_test_data(ch, from_time: int = MIN_TIME, to_time: int = 1750000000):
     filters = {"group_by": "Group", "group": get_test_settings().MT_GROUPS, "nullable_retrieve": ["History"]}

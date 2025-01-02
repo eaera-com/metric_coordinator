@@ -18,7 +18,7 @@ from tests.conftest import (
     get_test_settings,
     insert_data_into_clickhouse,
     load_csv,
-    setup_string_column_type,
+    process_string_column,
 )
 
 
@@ -98,7 +98,7 @@ def test_metric_runner_process_metrics(setup_teardown_metric_runner):
 
     df_deal = load_csv(MT5Deal)
     results = metric_runner.process_metrics(df_deal)
-    calculated_df = setup_string_column_type(results[AccountMetricDaily], AccountMetricDaily)
+    calculated_df = process_string_column(results[AccountMetricDaily], AccountMetricDaily)
 
     # Load the expected data from CSV
     expected_df = load_csv(AccountMetricDaily)
