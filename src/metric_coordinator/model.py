@@ -9,6 +9,10 @@ from account_metrics.metric_model import MetricData
 class BaseDatastore(object):
 
     @abc.abstractmethod
+    def put(self, value: pd.Series) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def get_metric(self) -> Type[MetricData]:
         raise NotImplementedError()
 
@@ -19,10 +23,6 @@ class BaseDatastore(object):
     @abc.abstractmethod
     def get_row_by_timestamp(self, shard_key: Dict[str, int], timestamp: datetime.date, timestamp_column: str) -> pd.Series:
         raise NotImplementedError()
-
-    @abc.abstractmethod
-    def put(self, value: pd.Series) -> None:
-        raise NotImplementedError
 
     @abc.abstractmethod
     def close(self) -> None:

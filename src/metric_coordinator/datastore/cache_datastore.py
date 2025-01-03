@@ -26,6 +26,21 @@ class CacheDatastore(BaseDatastore):
         if push_to_source:
             self.source_datastore.put(value)
 
+    def get_metric(self):
+        return super().get_metric()
+    
+    def get_latest_row(self, shard_key: Dict[str, int]) -> pd.Series:
+        if self._need_reload(datetime.datetime.now()):
+            self._eager_load()
+        result = self._get_latest_row_from_local(shard_key)
+
+        if result is None:
+            # TODO: logging local cache miss
+            #  print("Warning: No data found in local cache, loading from clickhouse")
+            result = self.source_datastore.get_latest_row(shard_key)
+            self.cache.put(result)
+        return result
+
     def get_row_by_timestamp(self, shard_key: Dict[str, int], timestamp: datetime.date, timestamp_column: str) -> pd.Series:
         if self._need_reload(timestamp):
             self._eager_load()
@@ -39,18 +54,6 @@ class CacheDatastore(BaseDatastore):
                 # TODO: Fix potential wrong order bugs
                 self.cache.put(result)
 
-        return result
-
-    def get_latest_row(self, shard_key: Dict[str, int]) -> pd.Series:
-        if self._need_reload(datetime.datetime.now()):
-            self._eager_load()
-        result = self._get_latest_row_from_local(shard_key)
-
-        if result is None:
-            # TODO: logging local cache miss
-            #  print("Warning: No data found in local cache, loading from clickhouse")
-            result = self.source_datastore.get_latest_row(shard_key)
-            self.cache.put(result)
         return result
 
     def get_source_datastore(self) -> BaseDatastore:
