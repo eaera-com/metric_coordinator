@@ -1,3 +1,4 @@
+import os
 import time
 import pandas as pd
 import pytest
@@ -118,3 +119,35 @@ def test_metric_runner_process_metrics(setup_teardown_metric_runner):
 
     # Compare dataframes
     pd.testing.assert_frame_equal(calculated_df[expected_df.columns], expected_df, check_dtype=True)
+
+def test_metric_runner_process_metrics_perf(setup_teardown_metric_runner):
+    metric_runner, test_name = setup_teardown_metric_runner
+    metric_runner.setup_clickhouse_client()
+    metric_runner.setup_datasore_metric_table_names(
+        {
+            MT5Deal: join_metric_name_test_name(MT5Deal, test_name),
+            MT5DealDaily: join_metric_name_test_name(MT5DealDaily, test_name),
+            AccountMetricDaily: join_metric_name_test_name(AccountMetricDaily, test_name),
+            AccountMetricByDeal: join_metric_name_test_name(AccountMetricByDeal, test_name),
+            AccountSymbolMetricByDeal: join_metric_name_test_name(AccountSymbolMetricByDeal, test_name),
+            PositionMetricByDeal: join_metric_name_test_name(PositionMetricByDeal, test_name),
+        }
+    )
+
+    for metric in METRICS:
+        if metric in [MT5Deal, MT5DealDaily]:
+            continue
+        metric_runner.register_metric(metric)
+
+    df_mt5_deal = load_csv(MT5Deal, os.path.abspath("tests/test_data/mt5_deal_large.csv"))
+    df_mt5_deal_daily = load_csv(MT5DealDaily, os.path.abspath("tests/test_data/mt5_deal_daily_large.csv"))
+    
+    insert_data_into_clickhouse(metric_runner.get_datastore(MT5DealDaily).get_source_datastore(), MT5DealDaily, test_name, df_mt5_deal_daily)
+
+    start = time.time()    
+    results = metric_runner.process_metrics(df_mt5_deal)
+    
+    elapsed_time = time.time() - start
+    print(f"Elapsed time: {elapsed_time}")
+    
+    assert 1 == 2 # just so test fails
