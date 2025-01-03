@@ -38,7 +38,8 @@ class CacheDatastore(BaseDatastore):
             # TODO: logging local cache miss
             #  print("Warning: No data found in local cache, loading from clickhouse")
             result = self.source_datastore.get_latest_row(shard_key)
-            self.cache.put(result)
+            if result:
+                self.cache.put(result)        
         return result
 
     def get_row_by_timestamp(self, shard_key: Dict[str, int], timestamp: datetime.date, timestamp_column: str) -> pd.Series:
