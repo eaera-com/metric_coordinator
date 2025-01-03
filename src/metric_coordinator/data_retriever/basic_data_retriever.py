@@ -6,11 +6,11 @@ import abc
 
 from account_metrics.metric_model import MetricData
 
-from metric_coordinator.model import DataRetriever
+from metric_coordinator.model import BaseDataRetriever
 from metric_coordinator.metric_runner import MetricRunner
 
 
-class BasicDataRetriever(DataRetriever, abc.ABC):
+class BasicDataRetriever(BaseDataRetriever, abc.ABC):
     _supported_filters: List[str] = ["login"]  # TODO: support filters by groups
 
     def __init__(self, filters: Dict[str, Any], server: str) -> None:

@@ -6,12 +6,12 @@ import pandas as pd
 from pydantic.alias_generators import to_snake
 
 from metric_coordinator.datastore.local_datastore import LocalDatastore
-from metric_coordinator.model import Datastore, MetricData
+from metric_coordinator.model import BaseDatastore, MetricData
 from metric_coordinator.configs import MIN_TIME
 
 
-class CacheDatastore(Datastore):
-    def __init__(self, metric: MetricData, source_datastore: Datastore, load_interval: int = 86400) -> None:
+class CacheDatastore(BaseDatastore):
+    def __init__(self, metric: MetricData, source_datastore: BaseDatastore, load_interval: int = 86400) -> None:
         self.metric = metric
         self.source_datastore = source_datastore
         # TODO: Support different sharding columns for source and cache
@@ -53,7 +53,7 @@ class CacheDatastore(Datastore):
             self.cache.put(result)
         return result
 
-    def get_source_datastore(self) -> Datastore:
+    def get_source_datastore(self) -> BaseDatastore:
         return self.source_datastore
 
     def _get_row_by_timestamp_from_local(self, shard_key: Dict[str, int], timestamp: datetime.date, timestamp_column: str) -> pd.Series:

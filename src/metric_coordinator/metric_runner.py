@@ -7,23 +7,23 @@ from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 from account_metrics import METRIC_CALCULATORS
 from metric_coordinator.datastore.clickhouse_datastore import ClickhouseDatastore
 from metric_coordinator.datastore.cache_datastore import CacheDatastore
-from metric_coordinator.model import DataEmiter, Datastore, MetricData, MetricRunnerAPI
+from metric_coordinator.model import BaseDataEmitter, BaseDatastore, MetricData, BaseMetricRunner
 from metric_coordinator.configs import Settings
 
 warnings.filterwarnings("ignore")
 
 
-class MetricRunner(MetricRunnerAPI):
+class MetricRunner(BaseMetricRunner):
     def __init__(self, settings: Settings, input_class: Type[MetricData]) -> None:
         self._metrics = []
-        self._emiters: List[DataEmiter] = []
-        self._datastores: Dict[Type[MetricData], Datastore] = {}
+        self._emiters: List[BaseDataEmitter] = []
+        self._datastores: Dict[Type[MetricData], BaseDatastore] = {}
         self.settings = settings
         self.input_class = input_class
         self.datastore_metric_table_names = None
         self.clickhouse_client = None
 
-    def build(self, metrics: List[Type[MetricData]], emits: List[DataEmiter]):
+    def build(self, metrics: List[Type[MetricData]], emits: List[BaseDataEmitter]):
         for metric in metrics:
             self.register_metric(metric)
         for emiter in emits:
@@ -61,7 +61,7 @@ class MetricRunner(MetricRunnerAPI):
                 database=self.settings.CLICKHOUSE_DATABASE,
             )
 
-    def setup_datastore(self, metric_class: Type[MetricData]) -> Datastore:
+    def setup_datastore(self, metric_class: Type[MetricData]) -> BaseDatastore:
         # TODO: move the setup to config instead of hardcoded
         if not self.clickhouse_client:
             raise ValueError("Clickhouse client not initialized before setting up clickhouse datastore")
@@ -91,7 +91,7 @@ class MetricRunner(MetricRunnerAPI):
             emiter.initialize_metric(metric_class)
         print(f"Metric {metric_class} registered")
 
-    def register_emitter(self, dataEmiter: DataEmiter) -> None:
+    def register_emitter(self, dataEmiter: BaseDataEmitter) -> None:
         self._emiters.append(dataEmiter)
         for metric in self._metrics:
             dataEmiter.initialize_metric(metric)
@@ -99,7 +99,7 @@ class MetricRunner(MetricRunnerAPI):
     def get_metrics(self) -> List[Type[MetricData]]:
         return self._metrics
 
-    def get_emitters(self) -> List[DataEmiter]:
+    def get_emitters(self) -> List[BaseDataEmitter]:
         return self._emiters
 
     def bind_datastore(self, metric_class: Type[MetricData]) -> None:
@@ -109,7 +109,7 @@ class MetricRunner(MetricRunnerAPI):
         self._datastores[metric_class] = datastore
         print(f"Successfully bind Datastore {metric_class}")
 
-    def get_datastore(self, metric_class: Type[MetricData]) -> Datastore:
+    def get_datastore(self, metric_class: Type[MetricData]) -> BaseDatastore:
         if metric_class not in self._datastores:
             raise ValueError(f"Datastore for {metric_class} not found")
         return self._datastores[metric_class]

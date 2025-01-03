@@ -1,2 +1,2 @@
-from metric_coordinator.model import Datastore
+from metric_coordinator.model import BaseDatastore
 from metric_coordinator.datastore.clickhouse_datastore import ClickhouseDatastore

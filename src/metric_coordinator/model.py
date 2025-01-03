@@ -6,7 +6,7 @@ import pandas as pd
 from account_metrics.metric_model import MetricData
 
 
-class Datastore(object):
+class BaseDatastore(object):
 
     @abc.abstractmethod
     def get_metric(self) -> Type[MetricData]:
@@ -33,7 +33,7 @@ class Datastore(object):
         raise NotImplementedError()
 
 
-class DataEmiter(abc.ABC):
+class BaseDataEmitter(abc.ABC):
     @abc.abstractmethod
     def emit(self, data: Dict[MetricData, pd.DataFrame]) -> Literal[True]:
         raise NotImplementedError()
@@ -47,7 +47,7 @@ class DataEmiter(abc.ABC):
         raise NotImplementedError()
 
 
-class MetricRunnerAPI(abc.ABC):
+class BaseMetricRunner(abc.ABC):
 
     @abc.abstractmethod
     def validate(self) -> None:
@@ -66,23 +66,23 @@ class MetricRunnerAPI(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_emitters(self) -> List[DataEmiter]:
+    def get_emitters(self) -> List[BaseDataEmitter]:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def setup_datastore(self, metric_class: Type[MetricData]) -> Datastore:
+    def setup_datastore(self, metric_class: Type[MetricData]) -> BaseDatastore:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def bind_datastore(self, datastore: Datastore) -> None:
+    def bind_datastore(self, datastore: BaseDatastore) -> None:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_datastore(self, metric_class: Type[MetricData]) -> Datastore:
+    def get_datastore(self, metric_class: Type[MetricData]) -> BaseDatastore:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_datastores(self) -> List[Datastore]:
+    def get_datastores(self) -> List[BaseDatastore]:
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -94,7 +94,7 @@ class MetricRunnerAPI(abc.ABC):
         raise NotImplementedError()
 
 
-class DataRetriever(abc.ABC):
+class BaseDataRetriever(abc.ABC):
 
     @abc.abstractmethod
     def validate(filters: Dict[str, Any]) -> None:

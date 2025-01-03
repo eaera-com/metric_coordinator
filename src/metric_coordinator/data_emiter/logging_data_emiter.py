@@ -3,11 +3,11 @@ import logging
 from typing import List, Literal, Dict, Type, Annotated
 import pandas as pd
 
-from metric_coordinator.model import DataEmiter
+from metric_coordinator.model import BaseDataEmitter
 from account_metrics.metric_model import MetricData
 
 
-class LoggingEmitter(DataEmiter):
+class LoggingEmitter(BaseDataEmitter):
     def __init__(self, logger: logging.Logger = logging.getLogger(__name__)) -> None:
         self.logger = logger
         self.last_emit_timestamp: Dict[Type[MetricData], int] = {}

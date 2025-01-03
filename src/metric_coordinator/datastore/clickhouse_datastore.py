@@ -5,12 +5,12 @@ import pandas as pd
 from pydantic.alias_generators import to_snake
 
 from metric_coordinator.datastore.local_datastore import LocalDatastore
-from metric_coordinator.model import Datastore, MetricData
+from metric_coordinator.model import BaseDatastore, MetricData
 from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 from metric_coordinator.configs import MIN_TIME
 
 
-class ClickhouseDatastore(Datastore):
+class ClickhouseDatastore(BaseDatastore):
     DEFAULT_SHARD_KEY_VALUES = ("ALL",)
 
     def __init__(self, metric: MetricData, client: ClickhouseClient, table_name: str = None, sharding_columns: tuple[str] = None) -> None:

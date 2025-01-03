@@ -6,11 +6,11 @@ from pydantic.alias_generators import to_snake
 from account_metrics.metric_model import MetricData
 
 from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
-from metric_coordinator.model import DataEmiter
+from metric_coordinator.model import BaseDataEmitter
 from metric_coordinator.configs import MIN_TIME, type_map
 
 
-class ClickhouseEmitter(DataEmiter):
+class ClickhouseEmitter(BaseDataEmitter):
 
     def __init__(self, client: ClickhouseClient, server: str = None, metric_table_names: Dict[type[MetricData], str] = {}) -> None:
         self.client = client

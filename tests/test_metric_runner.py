@@ -9,7 +9,7 @@ from metric_coordinator.configs import type_map
 from metric_coordinator.data_emiter.clickhouse_data_emiter import ClickhouseEmitter
 from metric_coordinator.data_emiter.logging_data_emiter import LoggingEmitter
 from metric_coordinator.metric_runner import MetricRunner
-from metric_coordinator.model import Datastore
+from metric_coordinator.model import BaseDatastore
 from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 
 from tests.conftest import (
@@ -67,7 +67,7 @@ def test_metric_runner_initialization(setup_teardown_metric_runner):
         assert METRIC_CALCULATORS[metric].get_metric_runner() == metric_runner
         for additional_metric in METRIC_CALCULATORS[metric].additional_data:
             assert metric_runner.get_datastore(additional_metric) is not None and isinstance(
-                metric_runner.get_datastore(additional_metric), Datastore
+                metric_runner.get_datastore(additional_metric), BaseDatastore
             )
     metric_runner.register_emitter(ClickhouseEmitter(metric_runner.get_clickhouse_client(), server=get_test_settings().SERVER_NAME))
     metric_runner.register_emitter(LoggingEmitter())
@@ -94,7 +94,7 @@ def test_metric_runner_process_metrics(setup_teardown_metric_runner):
         metric_runner.register_metric(metric)
 
     # Insert data to datastore MT5DealDaily
-    insert_data_into_clickhouse(metric_runner.get_datastore(MT5DealDaily), MT5DealDaily, test_name)
+    insert_data_into_clickhouse(metric_runner.get_datastore(MT5DealDaily).get_source_datastore(), MT5DealDaily, test_name)
 
     df_deal = load_csv(MT5Deal)
     results = metric_runner.process_metrics(df_deal)

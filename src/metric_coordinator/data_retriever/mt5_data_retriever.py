@@ -6,10 +6,10 @@ import pandas as pd
 
 from metric_coordinator.configs import MIN_TIME
 from metric_coordinator.api_client.mt5manager_client import MT5ManagerClient
-from metric_coordinator.model import DataRetriever
+from metric_coordinator.model import BaseDataRetriever
 
 
-class MT5DataRetriever(DataRetriever):
+class MT5DataRetriever(BaseDataRetriever):
     def __init__(self, server: str, server_name: str, login: str, password: str) -> None:
         self.server = server
         self.server_name = server_name

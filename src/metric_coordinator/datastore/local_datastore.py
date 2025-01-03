@@ -3,10 +3,10 @@ from typing import Dict, Type, Union, Any, List
 import pandas as pd
 import numpy as np
 
-from metric_coordinator.model import Datastore, MetricData
+from metric_coordinator.model import BaseDatastore, MetricData
 
 
-class LocalDatastore(Datastore):
+class LocalDatastore(BaseDatastore):
     DEFAULT_SHARD_KEY_VALUES = ("ALL",)
     MINIMUM_VALUE_PUT_IN_BATCH = 1000
     BATCH_PROCESSING = False
