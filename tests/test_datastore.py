@@ -74,12 +74,11 @@ def insert_data_into_local_datastore(local_datastore: LocalDatastore, dataframe:
 
 def convert_date_column(row: pd.Series, metric: MetricData):
     # TODO: fix this problem with date columns
-    if "date" in metric.model_fields and not isinstance(row["date"], datetime.date):
+    if "date" in metric.model_fields:
         row["date"] = row["date"].date()
-    if "Date" in metric.model_fields and not isinstance(row["Date"], datetime.date):
+    if "Date" in metric.model_fields:
         row["Date"] = row["Date"].date()
     return row
-
 
 class TestClickhouseDatastore:
     @staticmethod
