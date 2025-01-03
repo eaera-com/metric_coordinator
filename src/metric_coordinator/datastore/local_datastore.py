@@ -13,7 +13,7 @@ class LocalDatastore(BaseDatastore):
 
     def __init__(self, metric: MetricData, sharding_columns: tuple[str] = None, batch_size: int = 64) -> None:
         self.metric = metric
-        self.sharding_columns = sorted(sharding_columns) if sharding_columns else None
+        self.sharding_columns = sorted(sharding_columns) if sharding_columns else []
         self._batch_size = batch_size
         self.shard_key_values_to_dataframe = {}
 
