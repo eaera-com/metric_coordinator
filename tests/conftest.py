@@ -15,7 +15,7 @@ from account_metrics import AccountMetricDaily, AccountMetricByDeal, AccountSymb
 METRICS = [AccountMetricDaily, AccountMetricByDeal, AccountSymbolMetricByDeal, PositionMetricByDeal, MT5Deal, MT5DealDaily]
 
 
-def load_csv(metric: MetricData) -> pd.DataFrame:
+def load_csv(metric: MetricData, path: str = None) -> pd.DataFrame:
     def _get_type_mapping(metric: MetricData) -> Dict[str, str]:
         type_mapping = {}
         for field_name, field in metric.model_fields.items():
@@ -29,9 +29,10 @@ def load_csv(metric: MetricData) -> pd.DataFrame:
                 type_mapping[field_name] = "object"
         return type_mapping
 
-    csv_path = os.path.abspath(f"tests/test_data/{to_snake(metric.__name__)}.csv")
+    if path is None:
+        path = os.path.abspath(f"tests/test_data/{to_snake(metric.__name__)}.csv")
     date_columns = [field_name for field_name, field in metric.model_fields.items() if field.annotation == datetime.date]
-    df = pd.read_csv(csv_path, dtype=_get_type_mapping(metric), parse_dates=date_columns)
+    df = pd.read_csv(path, dtype=_get_type_mapping(metric), parse_dates=date_columns)
 
     # Convert string columns with NA values to empty strings
     string_columns = df.select_dtypes(include=["string"]).columns
@@ -63,8 +64,9 @@ def join_metric_name_test_name(metric: MetricData, test_name: str):
     return f"{test_name}_{to_snake(metric.__name__)}"
 
 
-def insert_data_into_clickhouse(ch: Union[ClickhouseDatastore, ClickhouseDataRetriever], metric: MetricData, test_name: str):
-    df = load_csv(metric)
+def insert_data_into_clickhouse(ch: Union[ClickhouseDatastore, ClickhouseDataRetriever], metric: MetricData, test_name: str, df: pd.DataFrame = None):
+    if df is None:
+        df = load_csv(metric)
     result = ch.client.insert_df(join_metric_name_test_name(metric, test_name), df)
     assert result
 
