@@ -189,11 +189,13 @@ class TestLocalDatastore:
         sharding_columns = metric.Meta.sharding_columns
         shard_key = {k: expected_last_row[k] for k in sharding_columns}
         retrieved_last_row = local_datastores[metric].get_latest_row(shard_key)
-
         assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
         
-        # TODO: add a custom shard key here
-    
+        shard_key2 =  {'date': datetime.date(2024, 8, 19), 'login': 500387, 'server': 'demo'}
+        retrieved_last_row2 = local_datastores[metric].get_latest_row(shard_key2)
+        expected_last_row2 = expected_df.iloc[-2]
+        assert_series_equal(retrieved_last_row2, expected_last_row2, check_index=False, check_names=False)
+
     # TODO: add more test cases (with cluster columns = logins also)
     def test_local_datastore_get(setup_and_teardown_local_datastore):
         pass
