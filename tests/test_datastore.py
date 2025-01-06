@@ -191,6 +191,8 @@ class TestLocalDatastore:
         retrieved_last_row = local_datastores[metric].get_latest_row(shard_key)
 
         assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
+        
+        # TODO: add a custom shard key here
     
     # TODO: add more test cases (with cluster columns = logins also)
     def test_local_datastore_get(setup_and_teardown_local_datastore):
