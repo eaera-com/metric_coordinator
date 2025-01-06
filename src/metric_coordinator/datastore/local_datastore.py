@@ -26,7 +26,7 @@ class LocalDatastore(BaseDatastore):
             self._put_in_batch(value)
         else:
             for _, row in value.iterrows():
-                key_values = row[self.metric.Meta.key_columns].to_dict()
+                key_values = row[self.metric.Meta.sharding_columns].to_dict()
                 shard_key_values = self._extract_shard_key_values(key_values)
                 pydantic_row = self.metric(**row.to_dict()).model_dump()
 
@@ -102,7 +102,7 @@ class LocalDatastore(BaseDatastore):
     def _put_in_batch(self, value):
         batch: Dict[tuple[Any], List[pd.DataFrame]] = {}
         for _, row in value.iterrows():
-            key_values = row[self.metric.Meta.key_columns].to_dict()
+            key_values = row[self.metric.Meta.sharding_columns].to_dict()
             batch[self._extract_shard_key_values(key_values)].append(row)
             # flush batch if it is full
             if len(batch[self._extract_shard_key_values(key_values)]) == self._batch_size:

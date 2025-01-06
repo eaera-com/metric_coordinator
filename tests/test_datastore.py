@@ -100,8 +100,8 @@ class TestClickhouseDatastore:
 
             expected_df = load_csv(metric)
             expected_last_row = expected_df.iloc[-1]
-            key_last_row = expected_last_row[metric.Meta.key_columns]
-            retrieved_last_row = ch_datastores[metric].get_latest_row({k: key_last_row[k] for k in metric.Meta.key_columns})
+            key_last_row = expected_last_row[metric.Meta.sharding_columns]
+            retrieved_last_row = ch_datastores[metric].get_latest_row({k: key_last_row[k] for k in metric.Meta.sharding_columns})
             # Convert date column to datetime.date type to correct format
             retrieved_last_row = convert_date_column(retrieved_last_row, metric)
 
@@ -115,16 +115,16 @@ class TestClickhouseDatastore:
             expected_df = load_csv(metric)
             insert_data_into_clickhouse(ch_datastores[metric], metric, test_name)
 
-            if len(metric.Meta.key_columns) <= 1:
+            if len(metric.Meta.sharding_columns) <= 1:
                 continue
             expected_last_row = expected_df.iloc[-1]
             # remove 1 last key column
-            key_last_row = expected_last_row[metric.Meta.key_columns]
-            key_columns = metric.Meta.key_columns.copy()
-            key_columns.pop()
+            key_last_row = expected_last_row[metric.Meta.sharding_columns]
+            sharding_columns = metric.Meta.sharding_columns.copy()
+            sharding_columns.pop()
 
             retrieved_last_row = ch_datastores[metric].get_row_by_timestamp(
-                {k: key_last_row[k] for k in key_columns}, expected_last_row["timestamp_utc"], "timestamp_utc"
+                {k: key_last_row[k] for k in sharding_columns}, expected_last_row["timestamp_utc"], "timestamp_utc"
             )
             # Convert date column to datetime.date type to correct format
             retrieved_last_row = convert_date_column(retrieved_last_row, metric)
@@ -157,8 +157,8 @@ class TestClickhouseDatastore:
             df = load_csv(metric)
             ch_datastores[metric].put(df)
             expected_last_row = df.iloc[-1]
-            key_last_row = expected_last_row[metric.Meta.key_columns]
-            retrieved_last_row = ch_datastores[metric].get_latest_row({k: key_last_row[k] for k in metric.Meta.key_columns})
+            key_last_row = expected_last_row[metric.Meta.sharding_columns]
+            retrieved_last_row = ch_datastores[metric].get_latest_row({k: key_last_row[k] for k in metric.Meta.sharding_columns})
             # Convert date column to datetime.date type to correct format
             retrieved_last_row = convert_date_column(retrieved_last_row, metric)
             assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
@@ -172,8 +172,8 @@ class TestLocalDatastore:
             expected_df = load_csv(metric)
             insert_data_into_local_datastore(local_datastores[metric], expected_df)
             expected_last_row = expected_df.iloc[-1]
-            key_last_row = expected_last_row[metric.Meta.key_columns]
-            retrieved_last_row = local_datastores[metric].get_latest_row({k: key_last_row[k] for k in metric.Meta.key_columns})
+            key_last_row = expected_last_row[metric.Meta.sharding_columns]
+            retrieved_last_row = local_datastores[metric].get_latest_row({k: key_last_row[k] for k in metric.Meta.sharding_columns})
             
             assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
     
