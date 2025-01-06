@@ -4,7 +4,7 @@ import pandas as pd
 from pandas.testing import assert_series_equal
 
 from metric_coordinator.data_retriever.clickhouse_data_retriever import ClickhouseClient
-from account_metrics import MT5DealDaily, MetricData
+from account_metrics import AccountMetricDaily, MT5DealDaily, MetricData
 from metric_coordinator.datastore.clickhouse_datastore import ClickhouseDatastore
 from tests.conftest import (
     METRICS,
@@ -63,6 +63,16 @@ def setup_and_teardown_local_datastore(request):
     for metric in METRICS:
         datastores[metric].close()
 
+
+@pytest.fixture
+def setup_and_teardown_local_datastore_sharded(request):
+    test_name = request.node.name
+    datastores = {}
+    for metric in METRICS:
+        datastores[metric] = LocalDatastore(metric=metric, sharding_columns=["login"])
+    yield datastores, test_name
+    for metric in METRICS:
+        datastores[metric].close()
 
 def sample_dataframe_of_metric(metric: MetricData, num_rows: int = 1000):
     pass
@@ -166,10 +176,27 @@ class TestLocalDatastore:
             retrieved_last_row = local_datastores[metric].get_latest_row({k: key_last_row[k] for k in metric.Meta.key_columns})
             
             assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
-
+    
+    @staticmethod
+    def test_local_datastore_put_2(setup_and_teardown_local_datastore_sharded):
+        local_datastores, _ = setup_and_teardown_local_datastore_sharded
+        metric = AccountMetricDaily
+        expected_df = load_csv(metric)
+        insert_data_into_local_datastore(local_datastores[metric], expected_df)
+        
+        expected_last_row = expected_df.iloc[-1]
+        
+        sharding_columns = metric.Meta.key_columns
+        
+        retrieved_last_row = local_datastores[metric].get_latest_row({k: expected_last_row[k] for k in sharding_columns})
+        
+        # todo: test retrieving by cluster columns
+        assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
+        
     # TODO: add more test cases (with cluster columns = logins also)
-
-
+    def test_local_datastore_get(setup_and_teardown_local_datastore):
+        pass
+    
 class TestCacheDatastore:
     @staticmethod
     def test_cache_datastore_get_row_by_timestamp():
