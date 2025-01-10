@@ -117,13 +117,13 @@ class TestClickhouseDatastore:
 
             expected_last_row = expected_df.iloc[-1]
             login_key = 'login' if 'login' in expected_last_row else 'Login'
-            
+
             retrieved_last_row = ch_datastores[metric].get_row_by_timestamp(
                 shard_key={login_key: expected_last_row[login_key]}, 
                 timestamp=expected_last_row["timestamp_utc"], 
                 timestamp_column="timestamp_utc"
             )
-            
+
             retrieved_last_row = convert_date_column(retrieved_last_row, metric)
             assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
 
@@ -134,7 +134,7 @@ class TestClickhouseDatastore:
         insert_data_into_clickhouse(ch_datastores[MT5DealDaily], MT5DealDaily, test_name)
         expected_last_row = expected_df.iloc[-1]
         retrieved_last_row = ch_datastores[MT5DealDaily].get_row_by_timestamp(
-            {"Login": expected_last_row["Login"]}, expected_last_row["Date"], "Date"
+            shard_key={"Login": expected_last_row["Login"]}, timestamp=expected_last_row["Date"], timestamp_column="Date"
         )
         # Convert date column to datetime.date type to correct format
         retrieved_last_row = convert_date_column(retrieved_last_row, MT5DealDaily)
@@ -142,7 +142,7 @@ class TestClickhouseDatastore:
 
         # Return None if not found
         retrieved_last_row = ch_datastores[MT5DealDaily].get_row_by_timestamp(
-            {"Login": expected_last_row["Login"]}, datetime.date(1960, 1, 1), "Date"
+            shard_key={"Login": expected_last_row["Login"]}, timestamp=datetime.date(1960, 1, 1), timestamp_column="Date"
         )
         assert retrieved_last_row is None
 
@@ -154,8 +154,10 @@ class TestClickhouseDatastore:
             df = load_csv(metric)
             ch_datastores[metric].put(df)
             expected_last_row = df.iloc[-1]
-            key_last_row = expected_last_row[metric.Meta.sharding_columns]
-            retrieved_last_row = ch_datastores[metric].get_latest_row({k: key_last_row[k] for k in metric.Meta.sharding_columns})
+
+            login_key = "login" if "login" in expected_last_row else "Login"
+            retrieved_last_row = ch_datastores[metric].get_latest_row(shard_key={login_key: expected_last_row[login_key]})
+
             # Convert date column to datetime.date type to correct format
             retrieved_last_row = convert_date_column(retrieved_last_row, metric)
             assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
