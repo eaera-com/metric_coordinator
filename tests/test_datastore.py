@@ -115,18 +115,21 @@ class TestClickhouseDatastore:
             expected_df = load_csv(metric)
             insert_data_into_clickhouse(ch_datastores[metric], metric, test_name)
 
+
+            if len(metric.Meta.sharding_columns) <= 1:
+                continue
+            
             if len(metric.Meta.sharding_columns) <= 1:
                 continue
             expected_last_row = expected_df.iloc[-1]
-            # remove 1 last key column
-            key_last_row = expected_last_row[metric.Meta.sharding_columns]
-            sharding_columns = metric.Meta.sharding_columns.copy()
-            sharding_columns.pop()
-
+            login_key = 'login' if 'login' in expected_last_row else 'Login'
+            
             retrieved_last_row = ch_datastores[metric].get_row_by_timestamp(
-                {k: key_last_row[k] for k in sharding_columns}, expected_last_row["timestamp_utc"], "timestamp_utc"
+                shard_key={login_key: expected_last_row[login_key]}, 
+                timestamp=expected_last_row["timestamp_utc"], 
+                timestamp_column="timestamp_utc"
             )
-            # Convert date column to datetime.date type to correct format
+            
             retrieved_last_row = convert_date_column(retrieved_last_row, metric)
             assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
 
