@@ -97,14 +97,14 @@ class TestClickhouseDatastore:
 
         for metric in METRICS:
             insert_data_into_clickhouse(ch_datastores[metric], metric, test_name)
-
             expected_df = load_csv(metric)
-            expected_last_row = expected_df.iloc[-1]
-            key_last_row = expected_last_row[metric.Meta.sharding_columns]
-            retrieved_last_row = ch_datastores[metric].get_latest_row({k: key_last_row[k] for k in metric.Meta.sharding_columns})
-            # Convert date column to datetime.date type to correct format
-            retrieved_last_row = convert_date_column(retrieved_last_row, metric)
 
+            expected_last_row = expected_df.iloc[-1]
+            login_key = "login" if "login" in expected_last_row else "Login"
+
+            retrieved_last_row = ch_datastores[metric].get_latest_row(shard_key={login_key: expected_last_row[login_key]})
+
+            retrieved_last_row = convert_date_column(retrieved_last_row, metric)
             assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
 
     @staticmethod
@@ -112,15 +112,9 @@ class TestClickhouseDatastore:
         ch_datastores, test_name = setup_and_teardown_clickhouse_datastore
 
         for metric in METRICS:
-            expected_df = load_csv(metric)
             insert_data_into_clickhouse(ch_datastores[metric], metric, test_name)
+            expected_df = load_csv(metric)
 
-
-            if len(metric.Meta.sharding_columns) <= 1:
-                continue
-            
-            if len(metric.Meta.sharding_columns) <= 1:
-                continue
             expected_last_row = expected_df.iloc[-1]
             login_key = 'login' if 'login' in expected_last_row else 'Login'
             
@@ -202,7 +196,7 @@ class TestLocalDatastore:
     # TODO: add more test cases (with cluster columns = logins also)
     def test_local_datastore_get(setup_and_teardown_local_datastore):
         pass
-    
+
 class TestCacheDatastore:
     @staticmethod
     def test_cache_datastore_get_row_by_timestamp():
