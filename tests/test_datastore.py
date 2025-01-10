@@ -185,8 +185,7 @@ class TestLocalDatastore:
         
         expected_last_row = expected_df.iloc[-1]
             
-        sharding_columns = metric.Meta.sharding_columns
-        shard_key = {k: expected_last_row[k] for k in sharding_columns}
+        shard_key =  {'date': datetime.date(2024, 7, 9), 'login': 500390, 'server': 'demo'}
         retrieved_last_row = local_datastores[metric].get_latest_row(shard_key)
         assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
         
