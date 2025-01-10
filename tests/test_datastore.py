@@ -171,10 +171,10 @@ class TestLocalDatastore:
             expected_df = load_csv(metric)
             insert_data_into_local_datastore(local_datastores[metric], expected_df)
             expected_last_row = expected_df.iloc[-1]
-            key_last_row = expected_last_row[metric.Meta.sharding_columns]
-            retrieved_last_row = local_datastores[metric].get_latest_row({k: key_last_row[k] for k in metric.Meta.sharding_columns})
+            retrieved_last_row = local_datastores[metric].get_latest_row(shard_key={})
             
             assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
+        
     
     @staticmethod
     def test_local_datastore_put_2(setup_and_teardown_local_datastore_sharded):
@@ -186,11 +186,11 @@ class TestLocalDatastore:
         expected_last_row = expected_df.iloc[-1]
             
         shard_key =  {'date': datetime.date(2024, 7, 9), 'login': 500390, 'server': 'demo'}
-        retrieved_last_row = local_datastores[metric].get_latest_row(shard_key)
+        retrieved_last_row = local_datastores[metric].get_latest_row(shard_key=shard_key)
         assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
         
         shard_key2 =  {'date': datetime.date(2024, 8, 19), 'login': 500387, 'server': 'demo'}
-        retrieved_last_row2 = local_datastores[metric].get_latest_row(shard_key2)
+        retrieved_last_row2 = local_datastores[metric].get_latest_row(shard_key=shard_key2)
         expected_last_row2 = expected_df.iloc[-2]
         assert_series_equal(retrieved_last_row2, expected_last_row2, check_index=False, check_names=False)
 
