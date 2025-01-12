@@ -5,6 +5,8 @@ import pandas as pd
 
 from account_metrics.metric_model import MetricData
 
+from metric_coordinator.configs import MIN_TIME
+
 
 class BaseDatastore(object):
 
@@ -35,6 +37,10 @@ class BaseDatastore(object):
 
     @abc.abstractmethod
     def drop(self) -> None:
+        raise NotImplementedError()
+    
+class SourceDatastore():
+    def eager_load(self, shard_key_values: tuple[Any] = None, from_time: int = MIN_TIME, to_time: int = datetime.datetime.now()) -> pd.DataFrame:
         raise NotImplementedError()
 
 

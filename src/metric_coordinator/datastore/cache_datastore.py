@@ -6,12 +6,12 @@ import pandas as pd
 from pydantic.alias_generators import to_snake
 
 from metric_coordinator.datastore.local_datastore import LocalDatastore
-from metric_coordinator.model import BaseDatastore, MetricData
+from metric_coordinator.model import BaseDatastore, MetricData, SourceDatastore
 from metric_coordinator.configs import MIN_TIME
 
 
 class CacheDatastore(BaseDatastore):
-    def __init__(self, metric: MetricData, source_datastore: BaseDatastore, load_interval: int = 86400) -> None:
+    def __init__(self, metric: MetricData, source_datastore: SourceDatastore, load_interval: int = 86400) -> None:
         self.metric = metric
         self.source_datastore = source_datastore
         # TODO: Support different sharding columns for source and cache
@@ -67,17 +67,7 @@ class CacheDatastore(BaseDatastore):
         return self.cache.get_latest_row(shard_key)
 
     def _eager_load(self, shard_key_values: tuple[Any] = None) -> pd.DataFrame:
-        # TODO: support eager load from timestamp (not reload_data but concat data)
-        # TODO: migrate all query to clickhouse datastore
-        # TODO: check if we want to parallelize this
-        if self.sharding_columns is None:
-            df = self.source_datastore.client.query_df(f"SELECT * FROM {self.source_datastore.get_metric_table_name()} FINAL")
-        else:
-            assert len(shard_key_values) == len(self.sharding_columns)
-            # TODO: validate that shard_key_values is in the correct type
-            df = self.source_datastore.client.query_df(
-                f"SELECT * FROM {self.source_datastore.get_metric_table_name()} FINAL {self._generate_sharding_clause(shard_key_values)}"
-            )
+        df = self.source_datastore.eager_load(shard_key_values)
         self.cache.reload_data(df)
         self._last_load_time = datetime.datetime.now()
         return df

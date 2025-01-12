@@ -62,6 +62,20 @@ class ClickhouseDatastore(BaseDatastore):
         self.client.drop_tables([self.get_metric_table_name()])
         self.table_name = None
         self.metric = None
+
+    def eager_load(self, shard_key_values: tuple[Any] = None, from_time: int = MIN_TIME, to_time: int = datetime.datetime.now()) -> pd.DataFrame:
+        # TODO: support eager load from timestamp (not reload_data but concat data)
+        # TODO: migrate all query to clickhouse datastore
+        # TODO: check if we want to parallelize this
+        if self.sharding_columns is None:
+            df = self.client.query_df(f"SELECT * FROM {self.get_metric_table_name()} FINAL")
+        else:
+            assert len(shard_key_values) == len(self.sharding_columns)
+            # TODO: validate that shard_key_values is in the correct type
+            df = self.client.query_df(
+                f"SELECT * FROM {self.get_metric_table_name()} FINAL {self._generate_sharding_clause(shard_key_values)}"
+            )
+        return df
     
     def _get_metric_fields(self, shard_key: Dict[str, Any]) -> str:
         if len(shard_key) == 0:

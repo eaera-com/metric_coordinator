@@ -10,11 +10,11 @@ from account_metrics import MT5Deal, MT5DealDaily
 from metric_coordinator.data_retriever.basic_data_retriever import BasicDataRetriever
 from metric_coordinator.api_client.clickhouse_client import ClickhouseClient
 from metric_coordinator.configs import MIN_TIME
-from metric_coordinator.model import MetricData
+from metric_coordinator.model import MetricData, SourceDatastore
 from metric_coordinator.metric_runner import MetricRunner
 
 
-class ClickhouseDataRetriever(BasicDataRetriever):
+class ClickhouseDataRetriever(BasicDataRetriever, SourceDatastore):
     def __init__(self, filters: Dict[str, Any], client: ClickhouseClient, server: str, table_name: str) -> None:
         super().__init__(filters, server)
         self.client = client

@@ -150,4 +150,3 @@ def test_metric_runner_process_metrics_perf(setup_teardown_metric_runner):
     elapsed_time = time.time() - start
     print(f"Elapsed time: {elapsed_time}")
     
-    assert 1 == 2 # just so test fails
