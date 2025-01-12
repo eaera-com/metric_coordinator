@@ -19,7 +19,12 @@ class BaseDatastore(object):
     @abc.abstractmethod
     def get_latest_row(self, shard_key: Dict[str, int]) -> pd.Series:
         raise NotImplementedError()
-
+    
+    # # TODO: support get key columns
+    # @abc.abstractmethod
+    # def get_key_columns(self) -> List[str]:
+    #     raise NotImplementedError()
+    
     @abc.abstractmethod
     def get_row_by_timestamp(self, shard_key: Dict[str, int], timestamp: datetime.date, timestamp_column: str) -> pd.Series:
         raise NotImplementedError()

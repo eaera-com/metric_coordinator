@@ -22,20 +22,24 @@ class LocalDatastore(BaseDatastore):
             raise ValueError("Datastore is not initialized or deactivated")
         if isinstance(value, pd.Series):
             value = value.to_frame()
-        if value.shape[0] >= self.MINIMUM_VALUE_PUT_IN_BATCH and self.BATCH_PROCESSING:
-            self._put_in_batch(value)
-        else:
-            for _, row in value.iterrows():
-                key_values = row[self.metric.Meta.sharding_columns].to_dict()
-                shard_key_values = self._extract_shard_key_values(key_values)
-                pydantic_row = self.metric(**row.to_dict()).model_dump()
+        # TODO: implement batch writing.
+        # if value.shape[0] >= self.MINIMUM_VALUE_PUT_IN_BATCH and self.BATCH_PROCESSING:
+        #     self._put_in_batch(value)
 
-                if shard_key_values not in self.shard_key_values_to_dataframe:
+        self._put_row_by_row(value)
+
+    def _put_row_by_row(self, value):
+        for _, row in value.iterrows():
+            key_values = row[self.metric.Meta.key_columns].to_dict()
+            shard_key_values = self._extract_shard_key_values(key_values)
+            pydantic_row = self.metric(**row.to_dict()).model_dump()
+
+            if shard_key_values not in self.shard_key_values_to_dataframe:
                     # Initialize empty DataFrame with metric model columns
-                    empty_df = pd.DataFrame(columns=list(self.metric.model_fields.keys()))
-                    self.shard_key_values_to_dataframe[shard_key_values] = empty_df
+                empty_df = pd.DataFrame(columns=list(self.metric.model_fields.keys()))
+                self.shard_key_values_to_dataframe[shard_key_values] = empty_df
                 # TODO: implement dataframe limit
-                self.shard_key_values_to_dataframe[shard_key_values] = pd.concat(
+            self.shard_key_values_to_dataframe[shard_key_values] = pd.concat(
                     [self.shard_key_values_to_dataframe[shard_key_values], pd.DataFrame([pydantic_row])], ignore_index=True
                 )
 
@@ -71,6 +75,7 @@ class LocalDatastore(BaseDatastore):
 
         if final_result_df.empty:
             if use_default_value:
+                # TODO: make sure this will never hang.
                 return pd.Series(self.metric(**shard_key).model_dump())
             else:
                 return None
@@ -85,14 +90,6 @@ class LocalDatastore(BaseDatastore):
         mask = pd.Series(True, index=df.index)
         for col, val in filters.items():
             mask &= df[col] == val
-        return df[mask]
-
-    def _get_df_filtered(self, df: pd.DataFrame, shard_key: Dict[str, int]) -> pd.DataFrame:
-        # Start with an all-True NumPy array
-        mask = np.ones(len(df), dtype=bool)
-        for col, val in shard_key.items():
-            # Compare directly using df[col].values to avoid Pandas overhead
-            mask &= df[col].values == val
         return df[mask]
 
     def reload_data(self, df: pd.DataFrame) -> None:
@@ -122,7 +119,7 @@ class LocalDatastore(BaseDatastore):
         Extracts the values of the shard key based on the sharding columns as a tuple
         e.g. {'login': 1001, 'date': datetime.date(2021, 1, 1)} -> (1001, datetime.date(2021, 1, 1))
         """
-        if not shard_key:
+        if not shard_key or self.sharding_columns is None:
             return self.DEFAULT_SHARD_KEY_VALUES
         missing_columns = [col for col in self.sharding_columns if col not in shard_key]
         if missing_columns:

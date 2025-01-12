@@ -39,7 +39,7 @@ class ClickhouseDatastore(BaseDatastore):
         LIMIT 1
         """
         result = self.client.query_df(query)
-        if result.empty:
+        if result is None or result.empty:
             return None
         return result.iloc[0]
 
@@ -54,7 +54,7 @@ class ClickhouseDatastore(BaseDatastore):
         LIMIT 1
         """
         result = self.client.query_df(query)
-        if result.empty:
+        if result is None or result.empty:
             return None
         return result.iloc[0]
 

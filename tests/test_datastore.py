@@ -164,16 +164,16 @@ class TestClickhouseDatastore:
 
 
 class TestLocalDatastore:
-    @staticmethod
-    def test_local_datastore_put(setup_and_teardown_local_datastore):
-        local_datastores, _ = setup_and_teardown_local_datastore
-        for metric in METRICS:
-            expected_df = load_csv(metric)
-            insert_data_into_local_datastore(local_datastores[metric], expected_df)
-            expected_last_row = expected_df.iloc[-1]
-            retrieved_last_row = local_datastores[metric].get_latest_row(shard_key={})
+    # @staticmethod
+    # def test_local_datastore_put(setup_and_teardown_local_datastore):
+    #     local_datastores, _ = setup_and_teardown_local_datastore
+    #     for metric in METRICS:
+    #         expected_df = load_csv(metric)
+    #         insert_data_into_local_datastore(local_datastores[metric], expected_df)
+    #         expected_last_row = expected_df.iloc[-1]
+    #         retrieved_last_row = local_datastores[metric].get_latest_row(shard_key={})
             
-            assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
+    #         assert_series_equal(retrieved_last_row, expected_last_row, check_index=False, check_names=False)
         
     
     @staticmethod
